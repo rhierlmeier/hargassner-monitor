@@ -7,8 +7,8 @@ WORKDIR /app
 # Copy go.mod and go.sum files
 COPY go.mod go.sum ./
 
-# Download all dependencies. Dependencies will be cached if the go.mod and go.sum files are not changed
-RUN go mod download
+# Add the missing module and download all dependencies. Dependencies will be cached if the go.mod and go.sum files are not changed
+RUN go get golang.org/x/sys/unix && go mod download
 
 # Copy the source from the current directory to the Working Directory inside the container
 COPY . .
