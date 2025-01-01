@@ -1,5 +1,5 @@
 # Use the official Golang image to create a build artifact.
-FROM golang:1.17 as builder
+FROM golang:1.17 AS builder
 
 # Set the Current Working Directory inside the container
 WORKDIR /app
@@ -14,8 +14,9 @@ RUN go mod download
 COPY . .
 
 # Build the Go app
-RUN go build -o build/hargassner-monitor main.go
-
+RUN mkdir -p build && go build -o build/hargassner-monitor main.go
+# Run tests
+RUN go test ./...
 # Start a new stage from scratch
 FROM alpine:latest
 
