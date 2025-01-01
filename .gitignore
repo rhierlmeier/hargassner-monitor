@@ -1,0 +1,32 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Output of the build process
+/build/
+bin/
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+
+# Go specific
+*.out
+*.test
+*.cover
+
+# Dependency directories
+vendor/
+
+# IDE specific files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Docker specific files
+docker-compose.override.yml
