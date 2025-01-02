@@ -28,6 +28,11 @@ COPY --from=builder /app/build/hargassner-monitor .
 
 ENV HARGASSNER_MONITOR_PORT=8080
 ENV HARGASSNER_SERIAL_DEVICE=/dev/ttyUSB0
+ENV HARGASSNER_MQTT_CLIENT_ID=hargassner-monitor
+# Optional username and password for MQTT
+ENV HARGASSNER_MQTT_USER=
+ENV HARGASSNER_MQTT_PASSWORD=
+
 
 # Command to run the executable
 CMD ["./hargassner-monitor"]

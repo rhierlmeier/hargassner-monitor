@@ -1,5 +1,4 @@
 # Hargassner Monitor
-
 Hargassner Monitor is a Go application that reads and parses status records from a Hargassner HSV heating system via a serial connection. The application can be built and run locally or within a Docker container.
 
 ## Features
@@ -18,5 +17,47 @@ Hargassner Monitor is a Go application that reads and parses status records from
 ### Clone the Repository
 
 ```sh
-git clone https://github.com/yourusername/hargassner-monitor.git
+git clone https://github.com/rhierlmeier/hargassner-monitor.git
 cd hargassner-monitor
+```
+
+### Docker Images
+
+The project provides pre-built Docker images for different architectures. You can pull the appropriate image for your system from Docker Hub.
+
+#### Pulling the Docker Image
+
+To pull the Docker image for `amd64` architecture:
+
+```sh
+docker pull rhierlmeier/hargassner-monitor:amd64-latest
+```
+
+To pull the Docker image for `arm64` architecture:
+
+```sh
+docker pull rhierlmeier/hargassner-monitor:arm64-latest
+```
+
+#### Running the Docker Container
+
+To run the Docker container:
+
+```sh
+docker run --rm -it \
+    --device=/dev/ttyUSB0 \
+    rhierlmeier/hargassner-monitor:latest
+```
+
+Replace `/dev/ttyUSB0` with the appropriate serial device on your system.
+
+# Environment Variables
+
+The application uses the following environment variables:
+
+- `HARGASSNER_SERIAL_PORT`: Specifies the serial port to which the Hargassner heating system is connected. Default is `/dev/ttyUSB0`.
+- `MQTT_BROKER`: Specifies the MQTT broker URL. Default is `tcp://localhost:1883`.
+- `MQTT_TOPIC`: Specifies the MQTT topic to publish the status records. Default is `hargassner/status`.
+- `MQTT_CLIENT_ID`: Specifies the MQTT client ID. Default is `hargassner-monitor`.
+- `MQTT_USERNAME`: Specifies the username for MQTT broker authentication. Default is empty.
+- `MQTT_PASSWORD`: Specifies the password for MQTT broker authentication. Default is empty.
