@@ -3,6 +3,7 @@ module hierlmeier/hargassner-monitor
 go 1.17
 
 require go.bug.st/serial v1.6.2
+require github.com/gorilla/mux v1.8.0
 
 require (
 	github.com/creack/goselect v0.1.2 // indirect

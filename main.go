@@ -2,21 +2,15 @@ package main
 
 import (
 	"bufio"
-	"flag"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
 
 	"go.bug.st/serial"
 )
-
-func printUsage() {
-	fmt.Println("Usage: hargassner-monitor [options]")
-	fmt.Println("Options:")
-	flag.PrintDefaults()
-}
 
 type StatusRecord struct {
 	PrimaryAirFan              int
@@ -50,6 +44,11 @@ type StatusRecord struct {
 	MotorCurrentFeedScrew      float64
 	MotorCurrentAshDischarge   float64
 	MotorCurrentRoomDischarge  float64
+}
+
+func readinessProbe(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Service is ready"))
 }
 
 func parseStatusRecord(fields []string) (*StatusRecord, error) {
@@ -189,53 +188,37 @@ func parseStatusRecord(fields []string) (*StatusRecord, error) {
 	return record, nil
 }
 
+func getEnv(name string, defaultValue string) string {
+	value := os.Getenv(name)
+	if value == "" {
+		return defaultValue
+	}
+	return value
+}
+
 func main() {
-	portName := flag.String("port", "/dev/ttyAMA0", "Serial port name")
-	baudRate := flag.Int("baud", 19200, "Baud rate for serial communication")
-
-	dataBits := flag.Int("databits", 8, "Number of data bits for serial communication")
-	parity := flag.String("parity", "none", "Parity for serial communication (none, even, odd)")
-	var parityValue serial.Parity
-	switch strings.ToUpper(*parity) {
-	case "EVEN":
-		parityValue = serial.EvenParity
-	case "ODD":
-		parityValue = serial.OddParity
-	case "NONE":
-		parityValue = serial.NoParity
-	default:
-		log.Fatal("Invalid parity: " + *parity)
-		os.Exit(1)
-	}
-	stopBits := flag.String("stopbits", "1", "Number of stop bits for serial communication (1, 2, 1.5)")
-	var stopBitValue serial.StopBits
-	switch strings.ToUpper(*stopBits) {
-	case "1":
-		stopBitValue = serial.OneStopBit
-	case "2":
-		stopBitValue = serial.TwoStopBits
-	case "1.5":
-		stopBitValue = serial.OnePointFiveStopBits
-	default:
-		log.Fatal("Invalid stopbits: " + *stopBits)
-		os.Exit(1)
-	}
-
-	flag.Usage = printUsage
-	flag.Parse()
+	serialDevice := getEnv("HARGASSNER_SERIAL_DEVICE", "/dev/ttyUSB0")
 
 	mode := &serial.Mode{
-		BaudRate: *baudRate,
-		Parity:   parityValue,
-		DataBits: *dataBits,
-		StopBits: stopBitValue,
+		BaudRate: 19200,
+		Parity:   serial.NoParity,
+		DataBits: 8,
+		StopBits: serial.OneStopBit,
 	}
 
-	port, err := serial.Open(*portName, mode)
+	port, err := serial.Open(serialDevice, mode)
 	if err != nil {
 		log.Fatal(err)
 		os.Exit(1)
 	}
+
+	httpPort := getEnv("HARGASSNER_MONITOR_PORT", "8080")
+
+	http.HandleFunc("/readiness", readinessProbe)
+
+	go func() {
+		log.Fatal(http.ListenAndServe(":"+httpPort, nil))
+	}()
 
 	reader := bufio.NewReader(port)
 

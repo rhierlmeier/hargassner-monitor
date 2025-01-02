@@ -26,5 +26,8 @@ WORKDIR /root/
 # Copy the Pre-built binary file from the previous stage
 COPY --from=builder /app/build/hargassner-monitor .
 
+ENV HARGASSNER_MONITOR_PORT=8080
+ENV HARGASSNER_SERIAL_DEVICE=/dev/ttyUSB0
+
 # Command to run the executable
 CMD ["./hargassner-monitor"]
