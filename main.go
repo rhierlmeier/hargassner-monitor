@@ -196,6 +196,41 @@ func getEnv(name string, defaultValue string) string {
 	return value
 }
 
+func publishStatusRecord(mqttClient mqtt.Client, record *StatusRecord) {
+	topicPrefix := "homie/hargassner-monitor/"
+	mqttClient.Publish(topicPrefix+"PrimaryAirFan", 0, false, strconv.Itoa(record.PrimaryAirFan))
+	mqttClient.Publish(topicPrefix+"ExhaustFan", 0, false, strconv.Itoa(record.ExhaustFan))
+	mqttClient.Publish(topicPrefix+"O2InExhaustGas", 0, false, strconv.FormatFloat(record.O2InExhaustGas, 'f', 2, 64))
+	mqttClient.Publish(topicPrefix+"BoilerTemperature", 0, false, strconv.Itoa(record.BoilerTemperature))
+	mqttClient.Publish(topicPrefix+"ExhaustGasTemperature", 0, false, strconv.Itoa(record.ExhaustGasTemperature))
+	mqttClient.Publish(topicPrefix+"CurrentOutdoorTemperature", 0, false, strconv.FormatFloat(record.CurrentOutdoorTemperature, 'f', 2, 64))
+	mqttClient.Publish(topicPrefix+"AverageOutdoorTemperature", 0, false, strconv.FormatFloat(record.AverageOutdoorTemperature, 'f', 2, 64))
+	mqttClient.Publish(topicPrefix+"FlowTemperatureCircuit1", 0, false, strconv.FormatFloat(record.FlowTemperatureCircuit1, 'f', 2, 64))
+	mqttClient.Publish(topicPrefix+"FlowTemperatureCircuit2", 0, false, strconv.FormatFloat(record.FlowTemperatureCircuit2, 'f', 2, 64))
+	mqttClient.Publish(topicPrefix+"FlowTemperatureCircuit1Set", 0, false, strconv.FormatFloat(record.FlowTemperatureCircuit1Set, 'f', 2, 64))
+	mqttClient.Publish(topicPrefix+"FlowTemperatureCircuit2Set", 0, false, strconv.FormatFloat(record.FlowTemperatureCircuit2Set, 'f', 2, 64))
+	mqttClient.Publish(topicPrefix+"ReturnBoiler2BufferTemp", 0, false, strconv.Itoa(record.ReturnBoiler2BufferTemp))
+	mqttClient.Publish(topicPrefix+"BoilerTemperature1", 0, false, strconv.Itoa(record.BoilerTemperature1))
+	mqttClient.Publish(topicPrefix+"FeedRate", 0, false, strconv.Itoa(record.FeedRate))
+	mqttClient.Publish(topicPrefix+"BoilerSetTemperature", 0, false, strconv.Itoa(record.BoilerSetTemperature))
+	mqttClient.Publish(topicPrefix+"CurrentUnderpressure", 0, false, strconv.FormatFloat(record.CurrentUnderpressure, 'f', 2, 64))
+	mqttClient.Publish(topicPrefix+"AverageUnderpressure", 0, false, strconv.FormatFloat(record.AverageUnderpressure, 'f', 2, 64))
+	mqttClient.Publish(topicPrefix+"SetUnderpressure", 0, false, strconv.FormatFloat(record.SetUnderpressure, 'f', 2, 64))
+	mqttClient.Publish(topicPrefix+"FlowTemperatureCircuit3", 0, false, strconv.FormatFloat(record.FlowTemperatureCircuit3, 'f', 2, 64))
+	mqttClient.Publish(topicPrefix+"FlowTemperatureCircuit4", 0, false, strconv.FormatFloat(record.FlowTemperatureCircuit4, 'f', 2, 64))
+	mqttClient.Publish(topicPrefix+"FlowTemperatureCircuit3Set", 0, false, strconv.FormatFloat(record.FlowTemperatureCircuit3Set, 'f', 2, 64))
+	mqttClient.Publish(topicPrefix+"FlowTemperatureCircuit4Set", 0, false, strconv.FormatFloat(record.FlowTemperatureCircuit4Set, 'f', 2, 64))
+	mqttClient.Publish(topicPrefix+"BoilerTemperature2SM", 0, false, strconv.FormatFloat(record.BoilerTemperature2SM, 'f', 2, 64))
+	mqttClient.Publish(topicPrefix+"HK1FR25", 0, false, strconv.FormatFloat(record.HK1FR25, 'f', 2, 64))
+	mqttClient.Publish(topicPrefix+"HK2FR25", 0, false, strconv.FormatFloat(record.HK2FR25, 'f', 2, 64))
+	mqttClient.Publish(topicPrefix+"HK3FR25SM", 0, false, strconv.FormatFloat(record.HK3FR25SM, 'f', 2, 64))
+	mqttClient.Publish(topicPrefix+"HK4FR25SM", 0, false, strconv.FormatFloat(record.HK4FR25SM, 'f', 2, 64))
+	mqttClient.Publish(topicPrefix+"BoilerState", 0, false, strconv.FormatFloat(record.BoilerState, 'f', 2, 64))
+	mqttClient.Publish(topicPrefix+"MotorCurrentFeedScrew", 0, false, strconv.FormatFloat(record.MotorCurrentFeedScrew, 'f', 2, 64))
+	mqttClient.Publish(topicPrefix+"MotorCurrentAshDischarge", 0, false, strconv.FormatFloat(record.MotorCurrentAshDischarge, 'f', 2, 64))
+	mqttClient.Publish(topicPrefix+"MotorCurrentRoomDischarge", 0, false, strconv.FormatFloat(record.MotorCurrentRoomDischarge, 'f', 2, 64))
+}
+
 func main() {
 	serialDevice := getEnv("HARGASSNER_SERIAL_DEVICE", "/dev/ttyUSB0")
 
@@ -251,6 +286,7 @@ func main() {
 				continue
 			}
 			fmt.Printf("Parsed record: %+v\n", record)
+			publishStatusRecord(mqttClient, record)
 		} else {
 			fmt.Print(line)
 		}
