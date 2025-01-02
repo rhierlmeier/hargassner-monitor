@@ -20,7 +20,7 @@ Hargassner Monitor is a Go application that reads and parses status records from
 git clone https://github.com/rhierlmeier/hargassner-monitor.git
 cd hargassner-monitor
 ```
-
+Test
 ### Docker Images
 
 The project provides pre-built Docker images for different architectures. You can pull the appropriate image for your system from Docker Hub.
