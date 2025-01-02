@@ -1,5 +1,5 @@
 # Use the official Golang image to create a build artifact.
-FROM golang:1.17 as builder
+FROM golang:1.23 AS builder
 
 # Set the Current Working Directory inside the container
 WORKDIR /app
@@ -7,15 +7,16 @@ WORKDIR /app
 # Copy go.mod and go.sum files
 COPY go.mod go.sum ./
 
-# Download all dependencies. Dependencies will be cached if the go.mod and go.sum files are not changed
-RUN go mod download
-
+# Add the missing module and download all dependencies. Dependencies will be cached if the go.mod and go.sum files are not changed
+RUN go get golang.org/x/sys/unix && go mod download
+ 
 # Copy the source from the current directory to the Working Directory inside the container
 COPY . .
 
 # Build the Go app
-RUN go build -o hargassner-monitor .
-
+RUN mkdir -p build && go build -o build/hargassner-monitor main.go
+# Run tests
+RUN go test ./...
 # Start a new stage from scratch
 FROM alpine:latest
 
@@ -23,7 +24,15 @@ FROM alpine:latest
 WORKDIR /root/
 
 # Copy the Pre-built binary file from the previous stage
-COPY --from=builder /app/hargassner-monitor .
+COPY --from=builder /app/build/hargassner-monitor .
+
+ENV HARGASSNER_MONITOR_PORT=8080
+ENV HARGASSNER_SERIAL_DEVICE=/dev/ttyUSB0
+ENV HARGASSNER_MQTT_CLIENT_ID=hargassner-monitor
+# Optional username and password for MQTT
+ENV HARGASSNER_MQTT_USER=
+ENV HARGASSNER_MQTT_PASSWORD=
+
 
 # Command to run the executable
-CMD ["./hargassner-monitor"]           
+CMD ["./hargassner-monitor"]
