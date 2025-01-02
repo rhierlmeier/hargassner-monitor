@@ -25,6 +25,7 @@ jobs:
           images: |
             rhierlmeier/hargassner-monitor
           tags: |
+            type=sha
             type=ref,event=branch
             type=ref,event=pr
             type=semver,pattern={{version}}
