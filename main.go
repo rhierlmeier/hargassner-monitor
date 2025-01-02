@@ -15,6 +15,7 @@ import (
 )
 
 var mqttClient mqtt.Client
+var homieDevice *homie.Device
 
 type StatusRecord struct {
 	PrimaryAirFan              int
@@ -233,6 +234,21 @@ func publish(topic, value string) {
 	mqttClient.Publish(topic, 0, false, value)
 }
 
+func onConnectionLost(client mqtt.Client, err error) {
+	log.Printf("MQTT connection lost: %v", err)
+	for k := range topicToValue {
+		delete(topicToValue, k)
+	}
+}
+
+func onConnected(client mqtt.Client) {
+	log.Printf("Connected to MQTT broker")
+	// get the full homie definition to send to MQTT - you only need to send it once unless it's changing over time
+	for _, attribute := range homieDevice.GetHomieAttributes() {
+		publish(attribute.Topic, attribute.Value)
+	}
+}
+
 func publishStatusRecord(device *homie.Device, record *StatusRecord) {
 	device.Node("prozesswerte").Property("rauchgasTemperatur").Set(record.ExhaustGasTemperature)
 	device.Node("prozesswerte").Property("boiler1Temperatur").Set(record.BoilerTemperature1)
@@ -269,26 +285,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	httpPort := getEnv("HARGASSNER_MONITOR_PORT", "8080")
-
-	http.HandleFunc("/readiness", readinessProbe)
-
-	go func() {
-		log.Fatal(http.ListenAndServe(":"+httpPort, nil))
-	}()
-
-	opts := mqtt.NewClientOptions().
-		AddBroker(getEnv("HARGASSNER_MQTT_BROKER", "tcp://localhost:1883")).
-		SetClientID(getEnv("HARGASSNER_MQTT_CLIENT_ID", "hargassner-monitor")).
-		SetUsername(getEnv("HARGASSNER_MQTT_USER", "")).
-		SetPassword(getEnv("HARGASSNER_MQTT_PASSWORD", ""))
-
-	mqttClient = mqtt.NewClient(opts)
-	if token := mqttClient.Connect(); token.Wait() && token.Error() != nil {
-		log.Fatal(token.Error())
-	}
-
-	device := homie.
+	homieDevice = homie.
 		NewDevice("hargassner", "Hargassner Heizung").
 		AddNode("prozesswerte", "Prozesswerte", "Prozesswerte").
 		AddProperty("rauchgasTemperatur", "Rauchgas Temperatur", homie.TypeFloat).SetUnit("°C").Node().
@@ -319,13 +316,36 @@ func main() {
 		AddProperty("nr", "Nummer", homie.TypeInteger).Node().
 		AddProperty("text", "Text", homie.TypeString).Node().Device()
 
-	// get the full homie definition to send to MQTT - you only need to send it once unless it's changing over time
-	for _, attribute := range device.GetHomieAttributes() {
-		publish(attribute.Topic, attribute.Value)
+	homieDevice.OnSet(onSet)
+
+	httpPort := getEnv("HARGASSNER_MONITOR_PORT", "8080")
+
+	http.HandleFunc("/readiness", readinessProbe)
+
+	go func() {
+		log.Fatal(http.ListenAndServe(":"+httpPort, nil))
+	}()
+
+	opts := mqtt.NewClientOptions().
+		AddBroker(getEnv("HARGASSNER_MQTT_BROKER", "tcp://localhost:1883")).
+		SetClientID(getEnv("HARGASSNER_MQTT_CLIENT_ID", "hargassner-monitor")).
+		SetUsername(getEnv("HARGASSNER_MQTT_USER", "")).
+		SetPassword(getEnv("HARGASSNER_MQTT_PASSWORD", ""))
+
+	opts.SetAutoReconnect(true)
+
+	opts.OnConnectionLost = onConnectionLost
+	opts.OnConnect = onConnected
+
+	log.Printf("Connecting to MQTT broker %s", opts.Servers[0])
+
+	mqttClient = mqtt.NewClient(opts)
+	if token := mqttClient.Connect(); token.Wait() && token.Error() != nil {
+		log.Fatal(token.Error())
+		os.Exit(1)
 	}
 
-	device.OnSet(onSet)
-
+	log.Printf("Reading from on %s", serialDevice)
 	reader := bufio.NewReader(port)
 
 	reader.ReadString('\n')
@@ -343,11 +363,9 @@ func main() {
 				log.Println("Error parsing status record:", err)
 				continue
 			}
-			fmt.Printf("Parsed record: %+v\n", record)
-			publishStatusRecord(device, record)
-
+			publishStatusRecord(homieDevice, record)
 		} else {
-			fmt.Print(line)
+			fmt.Print("Unknown record receive:" + line)
 		}
 	}
 
