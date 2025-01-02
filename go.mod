@@ -1,6 +1,6 @@
 module hierlmeier/hargassner-monitor
 
-go 1.22
+go 1.23
 
 require go.bug.st/serial v1.6.2
 
