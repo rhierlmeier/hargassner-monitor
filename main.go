@@ -5,10 +5,11 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
 	"strconv"
 	"strings"
 
-	"github.com/tarm/serial"
+	"go.bug.st/serial"
 )
 
 func printUsage() {
@@ -197,31 +198,46 @@ func main() {
 	var parityValue serial.Parity
 	switch strings.ToUpper(*parity) {
 	case "EVEN":
-		parityValue = serial.ParityEven
+		parityValue = serial.EvenParity
 	case "ODD":
-		parityValue = serial.ParityOdd
+		parityValue = serial.OddParity
 	case "NONE":
-		fallthrough
+		parityValue = serial.NoParity
 	default:
-		parityValue = serial.ParityNone
+		log.Fatal("Invalid parity: " + *parity)
+		os.Exit(1)
 	}
-	stopBits := flag.Int("stopbits", 1, "Number of stop bits for serial communication")
+	stopBits := flag.String("stopbits", "1", "Number of stop bits for serial communication (1, 2, 1.5)")
+	var stopBitValue serial.StopBits
+	switch strings.ToUpper(*parity) {
+	case "1":
+		stopBitValue = serial.OneStopBit
+	case "2":
+		stopBitValue = serial.TwoStopBits
+	case "1.5":
+		stopBitValue = serial.OnePointFiveStopBits
+	default:
+		log.Fatal("Invalid stopbits: " + *stopBits)
+		os.Exit(1)
+	}
+
 	flag.Usage = printUsage
 	flag.Parse()
 
-	c := &serial.Config{
-		Name:     *portName,
-		Baud:     *baudRate,
-		Size:     byte(*dataBits),
+	mode := &serial.Mode{
+		BaudRate: *baudRate,
 		Parity:   parityValue,
-		StopBits: serial.StopBits(*stopBits),
-	}
-	s, err := serial.OpenPort(c)
-	if err != nil {
-		log.Fatal(err)
+		DataBits: *dataBits,
+		StopBits: stopBitValue,
 	}
 
-	reader := bufio.NewReader(s)
+	port, err := serial.Open(*portName, mode)
+	if err != nil {
+		log.Fatal(err)
+		os.Exit(1)
+	}
+
+	reader := bufio.NewReader(port)
 	for {
 		line, err := reader.ReadString('\n')
 		if err != nil {
