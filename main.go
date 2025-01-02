@@ -9,9 +9,12 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/creativeprojects/go-homie"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"go.bug.st/serial"
 )
+
+var mqttClient mqtt.Client
 
 type StatusRecord struct {
 	PrimaryAirFan              int
@@ -196,39 +199,39 @@ func getEnv(name string, defaultValue string) string {
 	return value
 }
 
-func publishStatusRecord(mqttClient mqtt.Client, record *StatusRecord) {
-	topicPrefix := "homie/hargassner-monitor/"
-	mqttClient.Publish(topicPrefix+"PrimaryAirFan", 0, false, strconv.Itoa(record.PrimaryAirFan))
-	mqttClient.Publish(topicPrefix+"ExhaustFan", 0, false, strconv.Itoa(record.ExhaustFan))
-	mqttClient.Publish(topicPrefix+"O2InExhaustGas", 0, false, strconv.FormatFloat(record.O2InExhaustGas, 'f', 2, 64))
-	mqttClient.Publish(topicPrefix+"BoilerTemperature", 0, false, strconv.Itoa(record.BoilerTemperature))
-	mqttClient.Publish(topicPrefix+"ExhaustGasTemperature", 0, false, strconv.Itoa(record.ExhaustGasTemperature))
-	mqttClient.Publish(topicPrefix+"CurrentOutdoorTemperature", 0, false, strconv.FormatFloat(record.CurrentOutdoorTemperature, 'f', 2, 64))
-	mqttClient.Publish(topicPrefix+"AverageOutdoorTemperature", 0, false, strconv.FormatFloat(record.AverageOutdoorTemperature, 'f', 2, 64))
-	mqttClient.Publish(topicPrefix+"FlowTemperatureCircuit1", 0, false, strconv.FormatFloat(record.FlowTemperatureCircuit1, 'f', 2, 64))
-	mqttClient.Publish(topicPrefix+"FlowTemperatureCircuit2", 0, false, strconv.FormatFloat(record.FlowTemperatureCircuit2, 'f', 2, 64))
-	mqttClient.Publish(topicPrefix+"FlowTemperatureCircuit1Set", 0, false, strconv.FormatFloat(record.FlowTemperatureCircuit1Set, 'f', 2, 64))
-	mqttClient.Publish(topicPrefix+"FlowTemperatureCircuit2Set", 0, false, strconv.FormatFloat(record.FlowTemperatureCircuit2Set, 'f', 2, 64))
-	mqttClient.Publish(topicPrefix+"ReturnBoiler2BufferTemp", 0, false, strconv.Itoa(record.ReturnBoiler2BufferTemp))
-	mqttClient.Publish(topicPrefix+"BoilerTemperature1", 0, false, strconv.Itoa(record.BoilerTemperature1))
-	mqttClient.Publish(topicPrefix+"FeedRate", 0, false, strconv.Itoa(record.FeedRate))
-	mqttClient.Publish(topicPrefix+"BoilerSetTemperature", 0, false, strconv.Itoa(record.BoilerSetTemperature))
-	mqttClient.Publish(topicPrefix+"CurrentUnderpressure", 0, false, strconv.FormatFloat(record.CurrentUnderpressure, 'f', 2, 64))
-	mqttClient.Publish(topicPrefix+"AverageUnderpressure", 0, false, strconv.FormatFloat(record.AverageUnderpressure, 'f', 2, 64))
-	mqttClient.Publish(topicPrefix+"SetUnderpressure", 0, false, strconv.FormatFloat(record.SetUnderpressure, 'f', 2, 64))
-	mqttClient.Publish(topicPrefix+"FlowTemperatureCircuit3", 0, false, strconv.FormatFloat(record.FlowTemperatureCircuit3, 'f', 2, 64))
-	mqttClient.Publish(topicPrefix+"FlowTemperatureCircuit4", 0, false, strconv.FormatFloat(record.FlowTemperatureCircuit4, 'f', 2, 64))
-	mqttClient.Publish(topicPrefix+"FlowTemperatureCircuit3Set", 0, false, strconv.FormatFloat(record.FlowTemperatureCircuit3Set, 'f', 2, 64))
-	mqttClient.Publish(topicPrefix+"FlowTemperatureCircuit4Set", 0, false, strconv.FormatFloat(record.FlowTemperatureCircuit4Set, 'f', 2, 64))
-	mqttClient.Publish(topicPrefix+"BoilerTemperature2SM", 0, false, strconv.FormatFloat(record.BoilerTemperature2SM, 'f', 2, 64))
-	mqttClient.Publish(topicPrefix+"HK1FR25", 0, false, strconv.FormatFloat(record.HK1FR25, 'f', 2, 64))
-	mqttClient.Publish(topicPrefix+"HK2FR25", 0, false, strconv.FormatFloat(record.HK2FR25, 'f', 2, 64))
-	mqttClient.Publish(topicPrefix+"HK3FR25SM", 0, false, strconv.FormatFloat(record.HK3FR25SM, 'f', 2, 64))
-	mqttClient.Publish(topicPrefix+"HK4FR25SM", 0, false, strconv.FormatFloat(record.HK4FR25SM, 'f', 2, 64))
-	mqttClient.Publish(topicPrefix+"BoilerState", 0, false, strconv.FormatFloat(record.BoilerState, 'f', 2, 64))
-	mqttClient.Publish(topicPrefix+"MotorCurrentFeedScrew", 0, false, strconv.FormatFloat(record.MotorCurrentFeedScrew, 'f', 2, 64))
-	mqttClient.Publish(topicPrefix+"MotorCurrentAshDischarge", 0, false, strconv.FormatFloat(record.MotorCurrentAshDischarge, 'f', 2, 64))
-	mqttClient.Publish(topicPrefix+"MotorCurrentRoomDischarge", 0, false, strconv.FormatFloat(record.MotorCurrentRoomDischarge, 'f', 2, 64))
+func onSet(topic, value string, dataType homie.PropertyType) {
+	if value == "<nil>" {
+		value = ""
+	}
+	if value == "" && dataType != homie.TypeString {
+		// don't send a blank string on anything else than a string data type
+		return
+	}
+	publish(topic, value)
+}
+
+func publish(topic, value string) {
+	mqttClient.Publish(topic, 0, false, value)
+}
+
+func publishStatusRecord(device *homie.Device, record *StatusRecord) {
+	device.Node("prozesswerte").Property("rauchgasTemperatur").Set(record.ExhaustGasTemperature)
+	device.Node("prozesswerte").Property("boiler1Temperatur").Set(record.BoilerTemperature1)
+	device.Node("prozesswerte").Property("aussenTemperaturAktuell").Set(record.CurrentOutdoorTemperature)
+	device.Node("prozesswerte").Property("aussenTemperaturGemittelt").Set(record.AverageOutdoorTemperature)
+	device.Node("prozesswerte").Property("kesselTemperatur").Set(record.BoilerTemperature)
+	device.Node("prozesswerte").Property("kesselSollTemperatur").Set(record.BoilerSetTemperature)
+	device.Node("prozesswerte").Property("saugluftGeblaese").Set(record.ExhaustFan)
+	device.Node("prozesswerte").Property("primaerLuftGeblaese").Set(record.PrimaryAirFan)
+	device.Node("prozesswerte").Property("o2InAbgas").Set(record.O2InExhaustGas)
+	device.Node("prozesswerte").Property("foerderMenge").Set(record.FeedRate)
+	device.Node("prozesswerte").Property("stromRaumaustragung").Set(record.MotorCurrentRoomDischarge)
+	device.Node("prozesswerte").Property("stromAscheaustragung").Set(record.MotorCurrentAshDischarge)
+	device.Node("prozesswerte").Property("stromEinschub").Set(record.MotorCurrentFeedScrew)
+	device.Node("heizkreis1").Property("vorlaufTemperatur").Set(record.FlowTemperatureCircuit1)
+	device.Node("heizkreis1").Property("vorlaufSollTemperatur").Set(record.FlowTemperatureCircuit1Set)
+	device.Node("heizkreis2").Property("vorlaufTemperatur").Set(record.FlowTemperatureCircuit2)
+	device.Node("heizkreis2").Property("vorlaufSollTemperatur").Set(record.FlowTemperatureCircuit2Set)
 }
 
 func main() {
@@ -255,8 +258,6 @@ func main() {
 		log.Fatal(http.ListenAndServe(":"+httpPort, nil))
 	}()
 
-	var mqttClient mqtt.Client
-
 	opts := mqtt.NewClientOptions().
 		AddBroker(getEnv("HARGASSNER_MQTT_BROKER", "tcp://localhost:1883")).
 		SetClientID(getEnv("HARGASSNER_MQTT_CLIENT_ID", "hargassner-monitor")).
@@ -266,6 +267,42 @@ func main() {
 	mqttClient = mqtt.NewClient(opts)
 	if token := mqttClient.Connect(); token.Wait() && token.Error() != nil {
 		log.Fatal(token.Error())
+	}
+
+	device := homie.
+		NewDevice("hargassner", "Hargassner Heizung").
+		AddNode("prozesswerte", "Prozesswerte", "Prozesswerte").
+		AddProperty("rauchgasTemperatur", "Rauchgas Temperatur", homie.TypeFloat).SetUnit("°C").Node().
+		AddProperty("boiler1Temperatur", "Boiler 1 Temperatur", homie.TypeFloat).SetUnit("°C").Node().
+		AddProperty("aussenTemperaturAktuell", "Aussentemperatur aktuell", homie.TypeFloat).SetUnit("°C").Node().
+		AddProperty("aussenTemperaturGemittelt", "Aussentemperatur gemittelt", homie.TypeFloat).SetUnit("°C").Node().
+		AddProperty("kesselTemperatur", "Kesseltemperatur", homie.TypeFloat).SetUnit("°C").Node().
+		AddProperty("kesselSollTemperatur", "Kesselsolltemperatur", homie.TypeFloat).SetUnit("°C").Node().
+		AddProperty("meldung", "Meldung", homie.TypeString).Node().
+		AddProperty("saugluftGeblaese", "Saugluftgebläse", homie.TypeFloat).SetUnit("°C").Node().
+		AddProperty("primaerLuftGeblaese", "Primärluftgebläse", homie.TypeFloat).SetUnit("°C").Node().
+		AddProperty("o2InAbgas", "O2 in Abgas", homie.TypeFloat).SetUnit("%").Node().
+		AddProperty("foerderMenge", "Fördermenge", homie.TypeFloat).SetUnit("%").Node().
+		AddProperty("stromRaumaustragung", "Strom Raumaustragung", homie.TypeFloat).SetUnit("A").Node().
+		AddProperty("stromAscheaustragung", "Strom Ascheaustragung", homie.TypeFloat).SetUnit("A").Node().
+		AddProperty("stromEinschub", "Strom Einschub", homie.TypeFloat).SetUnit("A").Node().
+		AddProperty("stromEinschub", "Strom Einschub", homie.TypeFloat).SetUnit("A").Node().
+		Device().
+		AddNode("heizkreis1", "Heizkreis 1", "Heizkreis 1").
+		AddProperty("vorlaufTemperatur", "Vorlauftemperatur", homie.TypeFloat).SetUnit("°C").Node().
+		AddProperty("vorlaufSollTemperatur", "Vorlauf Solltemperatur", homie.TypeFloat).SetUnit("°C").Node().
+		Device().
+		AddNode("heizkreis2", "Heizkreis 2", "Heizkreis 2").
+		AddProperty("vorlaufTemperatur", "Vorlauftemperatur", homie.TypeFloat).SetUnit("°C").Node().
+		AddProperty("vorlaufSollTemperatur", "Vorlauf Solltemperatur", homie.TypeFloat).SetUnit("°C").Node().
+		Device().
+		AddNode("stoerung", "Störung", "Störung").
+		AddProperty("nr", "Nummer", homie.TypeInteger).Node().
+		AddProperty("text", "Text", homie.TypeString).Node().Device()
+
+	// get the full homie definition to send to MQTT - you only need to send it once unless it's changing over time
+	for _, attribute := range device.GetHomieAttributes() {
+		publish(attribute.Topic, attribute.Value)
 	}
 
 	reader := bufio.NewReader(port)
@@ -286,7 +323,8 @@ func main() {
 				continue
 			}
 			fmt.Printf("Parsed record: %+v\n", record)
-			publishStatusRecord(mqttClient, record)
+			publishStatusRecord(device, record)
+
 		} else {
 			fmt.Print(line)
 		}
