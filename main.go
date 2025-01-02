@@ -199,6 +199,21 @@ func getEnv(name string, defaultValue string) string {
 	return value
 }
 
+// topicToValue is a map of topics to values to avoid sending the same value multiple times
+var topicToValue = make(map[string]string)
+
+// onSet handles the setting of a topic's value and publishes the value if it has changed.
+// It ensures that blank strings are not sent for non-string data types.
+//
+// Parameters:
+//   - topic: The topic whose value is being set.
+//   - value: The new value to set for the topic.
+//   - dataType: The data type of the property being set.
+//
+// Behavior:
+//   - If the value is "<nil>", it is converted to an empty string.
+//   - If the value is an empty string and the data type is not a string, the function returns without publishing.
+//   - If the value has changed from the previous value for the topic, it updates the value and publishes it.
 func onSet(topic, value string, dataType homie.PropertyType) {
 	if value == "<nil>" {
 		value = ""
@@ -207,7 +222,11 @@ func onSet(topic, value string, dataType homie.PropertyType) {
 		// don't send a blank string on anything else than a string data type
 		return
 	}
-	publish(topic, value)
+	// Publish the values only when it really changes
+	if topicToValue[topic] != value {
+		topicToValue[topic] = value
+		publish(topic, value)
+	}
 }
 
 func publish(topic, value string) {
@@ -304,6 +323,8 @@ func main() {
 	for _, attribute := range device.GetHomieAttributes() {
 		publish(attribute.Topic, attribute.Value)
 	}
+
+	device.OnSet(onSet)
 
 	reader := bufio.NewReader(port)
 
