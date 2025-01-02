@@ -1,13 +1,10 @@
 module hierlmeier/hargassner-monitor
 
-go 1.23
+go 1.17
 
 require go.bug.st/serial v1.6.2
 
-require (
-	github.com/creativeprojects/go-homie v0.2.0
-	github.com/eclipse/paho.mqtt.golang v1.5.0
-)
+require github.com/eclipse/paho.mqtt.golang v1.5.0
 
 require (
 	github.com/creack/goselect v0.1.2 // indirect
