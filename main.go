@@ -220,6 +220,8 @@ func main() {
 		log.Fatal(http.ListenAndServe(":"+httpPort, nil))
 	}()
 
+	var mqttClient mqtt.Client
+
 	opts := mqtt.NewClientOptions().
 		AddBroker(getEnv("HARGASSNER_MQTT_BROKER", "tcp://localhost:1883")).
 		SetClientID(getEnv("HARGASSNER_MQTT_CLIENT_ID", "hargassner-monitor")).
