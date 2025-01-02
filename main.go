@@ -209,7 +209,7 @@ func main() {
 	}
 	stopBits := flag.String("stopbits", "1", "Number of stop bits for serial communication (1, 2, 1.5)")
 	var stopBitValue serial.StopBits
-	switch strings.ToUpper(*parity) {
+	switch strings.ToUpper(*stopBits) {
 	case "1":
 		stopBitValue = serial.OneStopBit
 	case "2":
