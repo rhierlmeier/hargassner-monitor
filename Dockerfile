@@ -30,6 +30,8 @@ COPY --from=builder /app/build/hargassner-monitor /app/
 ENV HARGASSNER_MONITOR_PORT=8080
 ENV HARGASSNER_SERIAL_DEVICE=/dev/ttyUSB0
 ENV HARGASSNER_MQTT_CLIENT_ID=hargassner-monitor
+# MQTT broker address (e.g tcp://localhost:1883 or ssl://localhost:8883)
+ENV HARGASSNER_MQTT_BROKER=tcp://localhost:1883
 # Optional username and password for MQTT
 ENV HARGASSNER_MQTT_USER=
 ENV HARGASSNER_MQTT_PASSWORD=

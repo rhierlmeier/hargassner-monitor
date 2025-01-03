@@ -56,8 +56,7 @@ Replace `/dev/ttyUSB0` with the appropriate serial device on your system.
 The application uses the following environment variables:
 
 - `HARGASSNER_SERIAL_PORT`: Specifies the serial port to which the Hargassner heating system is connected. Default is `/dev/ttyUSB0`.
-- `MQTT_BROKER`: Specifies the MQTT broker URL. Default is `tcp://localhost:1883`.
-- `MQTT_TOPIC`: Specifies the MQTT topic to publish the status records. Default is `hargassner/status`.
-- `MQTT_CLIENT_ID`: Specifies the MQTT client ID. Default is `hargassner-monitor`.
-- `MQTT_USERNAME`: Specifies the username for MQTT broker authentication. Default is empty.
-- `MQTT_PASSWORD`: Specifies the password for MQTT broker authentication. Default is empty.
+- `HARGASSNER_MQTT_BROKER`: Specifies the MQTT broker URL. Default is `tcp://localhost:1883`.
+- `HARGASSNER_MQTT_CLIENT_ID`: Specifies the MQTT client ID. Default is `hargassner-monitor`.
+- `HARGASSNER_MQTT_USERNAME`: Specifies the username for MQTT broker authentication. Default is empty.
+- `HARGASSNER_MQTT_PASSWORD`: Specifies the password for MQTT broker authentication. Default is empty.
