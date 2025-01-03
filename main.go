@@ -465,17 +465,18 @@ func handleStoerung(fields []string, line string) {
 
 		set := fields[2] == "Set"
 		var stoerNr int
-		var stoerungText string
+		stoerNr, err = strconv.Atoi(fields[3])
+		if err != nil {
+			log.Printf("Expected value of fields[3] (%s): %s", fields[3], err)
+			return
+		}
+		stoerungText := getStoerungText(stoerNr)
+
 		if set {
-			stoerNr, err = strconv.Atoi(fields[3])
-			if err != nil {
-				log.Printf("Expected value of fields[3] (%s): %s", fields[3], err)
-				return
-			}
-			stoerungText = getStoerungText(stoerNr)
+			log.Fatalf("Störung %d: %s", stoerNr, stoerungText)
 		} else {
-			stoerNr = 0
 			stoerungText = ""
+			log.Printf("Quit Störung %d: %s", stoerNr, stoerungText)
 		}
 
 		homieDevice.Node(NODE_STOERUNG).Property(PROPERTY_NR).Set(stoerNr)
