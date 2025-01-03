@@ -4,17 +4,14 @@ FROM golang:1.23 AS builder
 # Set the Current Working Directory inside the container
 WORKDIR /app
 
-# Copy go.mod and go.sum files
-COPY go.mod go.sum ./
-
-# Add the missing module and download all dependencies. Dependencies will be cached if the go.mod and go.sum files are not changed
-RUN go mod download
- 
 # Copy the source from the current directory to the Working Directory inside the container
 COPY . .
 
+# Add the missing module and download all dependencies. Dependencies will be cached if the go.mod and go.sum files are not changed
+RUN go mod download
+
 # Build the Go app
-RUN CGO_ENABLED=0 go build -o build/hargassner-monitor main.go
+RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o build/hargassner-monitor main.go
 # Run tests
 RUN go test ./...
 
@@ -35,6 +32,10 @@ ENV HARGASSNER_MQTT_BROKER=tcp://localhost:1883
 # Optional username and password for MQTT
 ENV HARGASSNER_MQTT_USER=
 ENV HARGASSNER_MQTT_PASSWORD=
+
+ENV HARGASSNER_MONITOR_PORT=8080
+
+EXPOSE $HARGASSNER_MONITOR_PORT
 
 
 # Command to run the executable

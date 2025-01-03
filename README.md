@@ -60,3 +60,4 @@ The application uses the following environment variables:
 - `HARGASSNER_MQTT_CLIENT_ID`: Specifies the MQTT client ID. Default is `hargassner-monitor`.
 - `HARGASSNER_MQTT_USERNAME`: Specifies the username for MQTT broker authentication. Default is empty.
 - `HARGASSNER_MQTT_PASSWORD`: Specifies the password for MQTT broker authentication. Default is empty.
+- `HARGASSNER_MONITOR_PORT`: Port where the HTTP server first status request is listing
