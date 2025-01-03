@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -369,6 +368,7 @@ func main() {
 		AddProperty(PROPERTY_STROM_ASCHEAUSTRAGUNG, "Strom Ascheaustragung", homie.TypeFloat).SetUnit("A").Node().
 		AddProperty(PROPERTY_STROM_EINSCHUB, "Strom Einschub", homie.TypeFloat).SetUnit("A").Node().
 		AddProperty(PROPERTY_STROM_EINSCHUB, "Strom Einschub", homie.TypeFloat).SetUnit("A").Node().
+		AddProperty(PROPERTY_MELDUNG, "Meldung", homie.TypeString).Node().
 		Device().
 		AddNode("heizkreis1", "Heizkreis 1", "Heizkreis 1").
 		AddProperty(PROPERTY_VORLAUF_TEMPERATUR, "Vorlauftemperatur", homie.TypeFloat).SetUnit("°C").Node().
@@ -435,7 +435,7 @@ func main() {
 			publishStatusRecord(homieDevice, record)
 		case "z":
 			{
-				handleStoerung(fields, line)
+				handleZRecord(fields)
 			}
 		default:
 			fmt.Print("Unknown record receive:" + line)
@@ -444,28 +444,11 @@ func main() {
 
 }
 
-// handleStoerung processes a line of input to determine if it contains a "Stoerung" (disturbance) record.
-// If a disturbance is detected, it updates the corresponding properties of the homieDevice.
-//
-// Parameters:
-//   - fields: A slice of strings representing the fields of the input line.
-//   - line: The original input line as a string.
-//
-// The function checks if the second field matches the pattern "St.rung" to identify a disturbance.
-// If a disturbance is found, it further checks if the third field is "Set" to determine the disturbance number and text.
-// These values are then set to the corresponding properties of the homieDevice.
-// If no disturbance is found, the function prints the unknown record.
-func handleStoerung(fields []string, line string) {
-	isStoerung, err := regexp.MatchString("St.rung", fields[1])
-	if err != nil {
-		log.Println("Error matching regex:", err)
-		return
-	}
+func handleZRecord(fields []string) {
+	isStoerung := strings.HasPrefix(fields[2], "St") && strings.HasSuffix(fields[2], "rung")
 	if isStoerung {
-
 		set := fields[2] == "Set"
-		var stoerNr int
-		stoerNr, err = strconv.Atoi(fields[3])
+		stoerNr, err := strconv.Atoi(fields[3])
 		if err != nil {
 			log.Printf("Expected value of fields[3] (%s): %s", fields[3], err)
 			return
@@ -482,6 +465,7 @@ func handleStoerung(fields []string, line string) {
 		homieDevice.Node(NODE_STOERUNG).Property(PROPERTY_NR).Set(stoerNr)
 		homieDevice.Node(NODE_STOERUNG).Property(PROPERTY_TEXT).Set(stoerungText)
 	} else {
-		fmt.Print("Unknown record receive:" + line)
+		message := strings.Join(fields[2:], " ")
+		homieDevice.Node(NODE_PROCESSWERTE).Property(PROPERTY_MELDUNG).Set(message)
 	}
 }
