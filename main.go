@@ -261,7 +261,7 @@ func onSet(topic, value string, dataType homie.PropertyType) {
 }
 
 func publish(topic, value string) {
-	mqttClient.Publish(topic, 0, false, value)
+	mqttClient.Publish(topic, 0, true, value)
 }
 
 func onConnectionLost(client mqtt.Client, err error) {
