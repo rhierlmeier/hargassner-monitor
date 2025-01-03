@@ -435,7 +435,7 @@ func main() {
 			publishStatusRecord(homieDevice, record)
 		case "z":
 			{
-				handleZRecord(fields)
+				handleZRecord(fields, line)
 			}
 		default:
 			fmt.Print("Unknown record receive:" + line)
@@ -444,15 +444,15 @@ func main() {
 
 }
 
-func handleZRecord(fields []string) {
+func handleZRecord(fields []string, line string) {
 	isStoerung := strings.HasPrefix(fields[2], "St") && strings.HasSuffix(fields[2], "rung")
 	if isStoerung {
-		set := fields[2] == "Set"
-		stoerNr, err := strconv.Atoi(fields[3])
+		stoerNr, err := strconv.Atoi(fields[2])
 		if err != nil {
-			log.Printf("Expected value of fields[3] (%s): %s", fields[3], err)
+			log.Printf("Expected value of fields[2] (%s): %s (line: %s)", fields[2], err, line)
 			return
 		}
+		set := fields[3] == "Set"
 		stoerungText := getStoerungText(stoerNr)
 
 		if set {
