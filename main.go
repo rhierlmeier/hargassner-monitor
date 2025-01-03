@@ -44,7 +44,7 @@ const (
 
 	PROPERTY_NR          = "nr"
 	PROPERTY_TEXT        = "text"
-	PROPERTY_ACTIVE      = "aktive"
+	PROPERTY_ACTIVE      = "active"
 	PROPERTY_LAST_CHANGE = "lastChange"
 )
 
