@@ -42,8 +42,10 @@ const (
 	PROPERTY_VORLAUF_TEMPERATUR          = "vorlaufTemperatur"
 	PROPERTY_VORLAUF_SOLL_TEMPERATUR     = "vorlaufSollTemperatur"
 
-	PROPERTY_NR   = "nr"
-	PROPERTY_TEXT = "text"
+	PROPERTY_NR          = "nr"
+	PROPERTY_TEXT        = "text"
+	PROPERTY_ACTIVE      = "aktive"
+	PROPERTY_LAST_CHANGE = "lastChange"
 )
 
 type StatusRecord struct {
@@ -380,7 +382,10 @@ func main() {
 		Device().
 		AddNode(NODE_STOERUNG, "Störung", "Störung").
 		AddProperty(PROPERTY_NR, "Nummer", homie.TypeInteger).Node().
-		AddProperty(PROPERTY_TEXT, "Text", homie.TypeString).Node().Device()
+		AddProperty(PROPERTY_TEXT, "Text", homie.TypeString).Node().
+		AddProperty(PROPERTY_ACTIVE, "Aktiv", homie.TypeBoolean).Node().
+		AddProperty(PROPERTY_LAST_CHANGE, "Letzte Änderung", homie.TypeString).Node().
+		Device()
 
 	homieDevice.OnSet(onSet)
 
@@ -452,18 +457,23 @@ func handleZRecord(fields []string, line string) {
 			log.Printf("Expected value of fields[2] (%s): %s (line: %s)", fields[2], err, line)
 			return
 		}
-		set := fields[3] == "Set"
+		active := fields[3] == "Set"
 		stoerungText := getStoerungText(stoerNr)
 
-		if set {
+		if active {
 			log.Fatalf("Störung %d: %s", stoerNr, stoerungText)
 		} else {
 			stoerungText = ""
 			log.Printf("Quit Störung %d: %s", stoerNr, stoerungText)
 		}
 
+		lastChange := fields[1]
+
 		homieDevice.Node(NODE_STOERUNG).Property(PROPERTY_NR).Set(stoerNr)
 		homieDevice.Node(NODE_STOERUNG).Property(PROPERTY_TEXT).Set(stoerungText)
+		homieDevice.Node(NODE_STOERUNG).Property(PROPERTY_ACTIVE).Set(active)
+		homieDevice.Node(NODE_STOERUNG).Property(PROPERTY_LAST_CHANGE).Set(lastChange)
+
 	} else {
 		message := strings.Join(fields[2:], " ")
 		homieDevice.Node(NODE_PROCESSWERTE).Property(PROPERTY_MELDUNG).Set(message)

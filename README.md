@@ -141,3 +141,5 @@ The application publishes the status values of the Hargassner heating system. It
 |--------|----------|----------|
 | `nr`   | Nummer   | integer  |
 | `text` | Text     | string   |
+| `active`| Aktiv | boolean |
+| `lastChange` | Letzte Änderung | string |
