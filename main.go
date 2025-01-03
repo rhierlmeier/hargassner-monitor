@@ -480,7 +480,6 @@ func handleZRecord(fields []string, line string) {
 		if active {
 			log.Fatalf("Störung %d: %s", stoerNr, stoerungText)
 		} else {
-			stoerungText = ""
 			log.Printf("Quit Störung %d: %s", stoerNr, stoerungText)
 		}
 
