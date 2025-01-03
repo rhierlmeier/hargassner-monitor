@@ -1,4 +1,4 @@
-module hierlmeier/hargassner-monitor
+module rhierlmeier/hargassner-monitor
 
 go 1.22
 

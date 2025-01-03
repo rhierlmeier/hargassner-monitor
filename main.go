@@ -273,6 +273,10 @@ func onConnectionLost(client mqtt.Client, err error) {
 
 func onConnected(client mqtt.Client) {
 	log.Printf("Connected to MQTT broker")
+	publishAllHomieAttributes()
+}
+
+func publishAllHomieAttributes() {
 	// get the full homie definition to send to MQTT - you only need to send it once unless it's changing over time
 	for _, attribute := range homieDevice.GetHomieAttributes() {
 		publish(attribute.Topic, attribute.Value)
@@ -343,7 +347,7 @@ func main() {
 
 	port, err := serial.Open(serialDevice, mode)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("could not open %s: %s", serialDevice, err)
 		os.Exit(1)
 	}
 
@@ -406,6 +410,8 @@ func main() {
 		log.Fatal(token.Error())
 		os.Exit(1)
 	}
+
+	publishAllHomieAttributes()
 
 	log.Printf("Reading from on %s", serialDevice)
 	reader := bufio.NewReader(port)
