@@ -47,8 +47,9 @@ docker pull rhierlmeier/hargassner-monitor:arm64-latest
 To run the Docker container:
 
 ```sh
-docker run --rm -it \
-    --device=/dev/ttyUSB0 \
+docker run --rm \
+    -e HARGASSNER_SERIAL_PORT=
+    -e HARGASSNER_MQTT_BROKER=tcp://mqtt.local
     rhierlmeier/hargassner-monitor:latest
 ```
 
