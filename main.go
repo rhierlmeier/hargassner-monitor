@@ -452,12 +452,27 @@ func main() {
 func handleZRecord(fields []string, line string) {
 	isStoerung := strings.HasPrefix(fields[2], "St") && strings.HasSuffix(fields[2], "rung")
 	if isStoerung {
-		stoerNr, err := strconv.Atoi(fields[2])
-		if err != nil {
-			log.Printf("Expected value of fields[2] (%s): %s (line: %s)", fields[2], err, line)
+		// 0.1........2........3...4.5
+		// z 18:39:41 Stoerung Set 7 Stop:1
+		// 0.1........2........3... 4
+		// z 18:40:16 Störung Quit 0007
+
+		var active bool
+		switch fields[3] {
+		case "Set":
+			active = true
+		case "Quit":
+			active = false
+		default:
+			log.Fatalf("Unexpected value of fields[3] (%s): %s (line: %s)", fields[3], "Set or Quit", line)
 			return
 		}
-		active := fields[3] == "Set"
+
+		stoerNr, err := strconv.Atoi(fields[4])
+		if err != nil {
+			log.Printf("Unexpected value of fields[4] (%s): %s (line: %s)", fields[4], err, line)
+			return
+		}
 		stoerungText := getStoerungText(stoerNr)
 
 		if active {
