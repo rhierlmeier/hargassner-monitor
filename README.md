@@ -1,3 +1,6 @@
+
+[![ci](https://github.com/rhierlmeier/hargassner-monitor/actions/workflows/docker-image.yaml/badge.svg)](https://github.com/rhierlmeier/hargassner-monitor/actions/workflows/docker-image.yaml)
+
 # Hargassner Monitor
 Hargassner Monitor is a Go application that reads and parses status records from a Hargassner HSV heating system via a serial connection. The application can be built and run locally or within a Docker container.
 
