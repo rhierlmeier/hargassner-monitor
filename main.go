@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -16,6 +17,35 @@ import (
 
 var mqttClient mqtt.Client
 var homieDevice *homie.Device
+
+const (
+	DEVICE_NAME = "hargassner"
+
+	NODE_PROCESSWERTE = "prozesswerte"
+	NODE_HEIZKREIS1   = "heizkreis1"
+	NODE_HEIZKREIS2   = "heizkreis2"
+	NODE_STOERUNG     = "stoerung"
+
+	PROPERTY_RAUCHGAS_TEMPERATUR         = "rauchgasTemperatur"
+	PROPERTY_BOILER1_TEMPERATUR          = "boiler1Temperatur"
+	PROPERTY_AUSSEN_TEMPERATUR_AKTUELL   = "aussenTemperaturAktuell"
+	PROPERTY_AUSSEN_TEMPERATUR_GEMITTELT = "aussenTemperaturGemittelt"
+	PROPERTY_KESSEL_TEMPERATUR           = "kesselTemperatur"
+	PROPERTY_KESSEL_SOLL_TEMPERATUR      = "kesselSollTemperatur"
+	PROPERTY_MELDUNG                     = "meldung"
+	PROPERTY_SAUGLUFT_GEBLÄSE            = "saugluftGeblaese"
+	PROPERTY_PRIMÄR_LUFT_GEBLÄSE         = "primaerLuftGeblaese"
+	PROPERTY_O2_IN_ABGAS                 = "o2InAbgas"
+	PROPERTY_FÖRDER_MENGE                = "foerderMenge"
+	PROPERTY_STROM_RAUMAUSTRAGUNG        = "stromRaumaustragung"
+	PROPERTY_STROM_ASCHEAUSTRAGUNG       = "stromAscheaustragung"
+	PROPERTY_STROM_EINSCHUB              = "stromEinschub"
+	PROPERTY_VORLAUF_TEMPERATUR          = "vorlaufTemperatur"
+	PROPERTY_VORLAUF_SOLL_TEMPERATUR     = "vorlaufSollTemperatur"
+
+	PROPERTY_NR   = "nr"
+	PROPERTY_TEXT = "text"
+)
 
 type StatusRecord struct {
 	PrimaryAirFan              int
@@ -250,23 +280,55 @@ func onConnected(client mqtt.Client) {
 }
 
 func publishStatusRecord(device *homie.Device, record *StatusRecord) {
-	device.Node("prozesswerte").Property("rauchgasTemperatur").Set(record.ExhaustGasTemperature)
-	device.Node("prozesswerte").Property("boiler1Temperatur").Set(record.BoilerTemperature1)
-	device.Node("prozesswerte").Property("aussenTemperaturAktuell").Set(record.CurrentOutdoorTemperature)
-	device.Node("prozesswerte").Property("aussenTemperaturGemittelt").Set(record.AverageOutdoorTemperature)
-	device.Node("prozesswerte").Property("kesselTemperatur").Set(record.BoilerTemperature)
-	device.Node("prozesswerte").Property("kesselSollTemperatur").Set(record.BoilerSetTemperature)
-	device.Node("prozesswerte").Property("saugluftGeblaese").Set(record.ExhaustFan)
-	device.Node("prozesswerte").Property("primaerLuftGeblaese").Set(record.PrimaryAirFan)
-	device.Node("prozesswerte").Property("o2InAbgas").Set(record.O2InExhaustGas)
-	device.Node("prozesswerte").Property("foerderMenge").Set(record.FeedRate)
-	device.Node("prozesswerte").Property("stromRaumaustragung").Set(record.MotorCurrentRoomDischarge)
-	device.Node("prozesswerte").Property("stromAscheaustragung").Set(record.MotorCurrentAshDischarge)
-	device.Node("prozesswerte").Property("stromEinschub").Set(record.MotorCurrentFeedScrew)
-	device.Node("heizkreis1").Property("vorlaufTemperatur").Set(record.FlowTemperatureCircuit1)
-	device.Node("heizkreis1").Property("vorlaufSollTemperatur").Set(record.FlowTemperatureCircuit1Set)
-	device.Node("heizkreis2").Property("vorlaufTemperatur").Set(record.FlowTemperatureCircuit2)
-	device.Node("heizkreis2").Property("vorlaufSollTemperatur").Set(record.FlowTemperatureCircuit2Set)
+	device.Node(NODE_PROCESSWERTE).Property(PROPERTY_RAUCHGAS_TEMPERATUR).Set(record.ExhaustGasTemperature)
+	device.Node(NODE_PROCESSWERTE).Property(PROPERTY_BOILER1_TEMPERATUR).Set(record.BoilerTemperature1)
+	device.Node(NODE_PROCESSWERTE).Property(PROPERTY_AUSSEN_TEMPERATUR_AKTUELL).Set(record.CurrentOutdoorTemperature)
+	device.Node(NODE_PROCESSWERTE).Property(PROPERTY_AUSSEN_TEMPERATUR_GEMITTELT).Set(record.AverageOutdoorTemperature)
+	device.Node(NODE_PROCESSWERTE).Property(PROPERTY_KESSEL_TEMPERATUR).Set(record.BoilerTemperature)
+	device.Node(NODE_PROCESSWERTE).Property(PROPERTY_KESSEL_SOLL_TEMPERATUR).Set(record.BoilerSetTemperature)
+	device.Node(NODE_PROCESSWERTE).Property(PROPERTY_SAUGLUFT_GEBLÄSE).Set(record.ExhaustFan)
+	device.Node(NODE_PROCESSWERTE).Property(PROPERTY_PRIMÄR_LUFT_GEBLÄSE).Set(record.PrimaryAirFan)
+	device.Node(NODE_PROCESSWERTE).Property(PROPERTY_O2_IN_ABGAS).Set(record.O2InExhaustGas)
+	device.Node(NODE_PROCESSWERTE).Property(PROPERTY_FÖRDER_MENGE).Set(record.FeedRate)
+	device.Node(NODE_PROCESSWERTE).Property(PROPERTY_STROM_RAUMAUSTRAGUNG).Set(record.MotorCurrentRoomDischarge)
+	device.Node(NODE_PROCESSWERTE).Property(PROPERTY_STROM_ASCHEAUSTRAGUNG).Set(record.MotorCurrentAshDischarge)
+	device.Node(NODE_PROCESSWERTE).Property(PROPERTY_STROM_EINSCHUB).Set(record.MotorCurrentFeedScrew)
+
+	device.Node(NODE_HEIZKREIS1).Property(PROPERTY_VORLAUF_TEMPERATUR).Set(record.FlowTemperatureCircuit1)
+	device.Node(NODE_HEIZKREIS1).Property(PROPERTY_VORLAUF_SOLL_TEMPERATUR).Set(record.FlowTemperatureCircuit1Set)
+	device.Node(NODE_HEIZKREIS2).Property(PROPERTY_VORLAUF_TEMPERATUR).Set(record.FlowTemperatureCircuit2)
+	device.Node(NODE_HEIZKREIS2).Property(PROPERTY_VORLAUF_SOLL_TEMPERATUR).Set(record.FlowTemperatureCircuit2Set)
+}
+
+func getStoerungText(stoerNr int) string {
+	stoerungText := map[int]string{
+		1:  "Sicherung F25 defekt",
+		2:  "Elektronischer Motorschutz Einschubschnecke ausgelöst",
+		3:  "Elektronischer Motorschutz Raumaustragung ausgelöst",
+		4:  "Elektronischer Motorschutz Ascheaustragung ausgelöst",
+		5:  "Sicherheitsthermostat (STB)",
+		6:  "Rücklaufzeit überschritten",
+		7:  "Endschalter Deckel offen",
+		8:  "Brennraum überfüllt",
+		9:  "Brandschutzklappe öffnet nicht",
+		10: "Zündzeit überschritten",
+		11: "Minimale Rauchgastemperatur unterschritten",
+		12: "Initiator Entaschung",
+		13: "Überstrom Einschubschnecke",
+		14: "Überstrom Raumaustragung",
+		15: "Überstrom Aschenaustragung",
+		16: "Rauchgasfühler falsch angeschlossen",
+		17: "Rauchgasfühler Unterbrechung",
+		18: "Kesselfühler Kurzschluss",
+		19: "Kesselfühler Unterbrechung",
+		20: "Boilerfühler 1 Kurzschluss",
+	}
+
+	text, ok := stoerungText[stoerNr]
+	if !ok {
+		text = "Unbekannte Störung"
+	}
+	return text
 }
 
 func main() {
@@ -286,35 +348,35 @@ func main() {
 	}
 
 	homieDevice = homie.
-		NewDevice("hargassner", "Hargassner Heizung").
-		AddNode("prozesswerte", "Prozesswerte", "Prozesswerte").
-		AddProperty("rauchgasTemperatur", "Rauchgas Temperatur", homie.TypeFloat).SetUnit("°C").Node().
-		AddProperty("boiler1Temperatur", "Boiler 1 Temperatur", homie.TypeFloat).SetUnit("°C").Node().
-		AddProperty("aussenTemperaturAktuell", "Aussentemperatur aktuell", homie.TypeFloat).SetUnit("°C").Node().
-		AddProperty("aussenTemperaturGemittelt", "Aussentemperatur gemittelt", homie.TypeFloat).SetUnit("°C").Node().
-		AddProperty("kesselTemperatur", "Kesseltemperatur", homie.TypeFloat).SetUnit("°C").Node().
-		AddProperty("kesselSollTemperatur", "Kesselsolltemperatur", homie.TypeFloat).SetUnit("°C").Node().
-		AddProperty("meldung", "Meldung", homie.TypeString).Node().
-		AddProperty("saugluftGeblaese", "Saugluftgebläse", homie.TypeFloat).SetUnit("°C").Node().
-		AddProperty("primaerLuftGeblaese", "Primärluftgebläse", homie.TypeFloat).SetUnit("°C").Node().
-		AddProperty("o2InAbgas", "O2 in Abgas", homie.TypeFloat).SetUnit("%").Node().
-		AddProperty("foerderMenge", "Fördermenge", homie.TypeFloat).SetUnit("%").Node().
-		AddProperty("stromRaumaustragung", "Strom Raumaustragung", homie.TypeFloat).SetUnit("A").Node().
-		AddProperty("stromAscheaustragung", "Strom Ascheaustragung", homie.TypeFloat).SetUnit("A").Node().
-		AddProperty("stromEinschub", "Strom Einschub", homie.TypeFloat).SetUnit("A").Node().
-		AddProperty("stromEinschub", "Strom Einschub", homie.TypeFloat).SetUnit("A").Node().
+		NewDevice(DEVICE_NAME, "Hargassner Heizung").
+		AddNode(NODE_PROCESSWERTE, "Prozesswerte", "Prozesswerte").
+		AddProperty(PROPERTY_RAUCHGAS_TEMPERATUR, "Rauchgas Temperatur", homie.TypeFloat).SetUnit("°C").Node().
+		AddProperty(PROPERTY_BOILER1_TEMPERATUR, "Boiler 1 Temperatur", homie.TypeFloat).SetUnit("°C").Node().
+		AddProperty(PROPERTY_AUSSEN_TEMPERATUR_AKTUELL, "Aussentemperatur aktuell", homie.TypeFloat).SetUnit("°C").Node().
+		AddProperty(PROPERTY_AUSSEN_TEMPERATUR_GEMITTELT, "Aussentemperatur gemittelt", homie.TypeFloat).SetUnit("°C").Node().
+		AddProperty(PROPERTY_KESSEL_TEMPERATUR, "Kesseltemperatur", homie.TypeFloat).SetUnit("°C").Node().
+		AddProperty(PROPERTY_KESSEL_SOLL_TEMPERATUR, "Kesselsolltemperatur", homie.TypeFloat).SetUnit("°C").Node().
+		AddProperty(PROPERTY_MELDUNG, "Meldung", homie.TypeString).Node().
+		AddProperty(PROPERTY_SAUGLUFT_GEBLÄSE, "Saugluftgebläse", homie.TypeFloat).SetUnit("°C").Node().
+		AddProperty(PROPERTY_PRIMÄR_LUFT_GEBLÄSE, "Primärluftgebläse", homie.TypeFloat).SetUnit("°C").Node().
+		AddProperty(PROPERTY_O2_IN_ABGAS, "O2 in Abgas", homie.TypeFloat).SetUnit("%").Node().
+		AddProperty(PROPERTY_FÖRDER_MENGE, "Fördermenge", homie.TypeFloat).SetUnit("%").Node().
+		AddProperty(PROPERTY_STROM_RAUMAUSTRAGUNG, "Strom Raumaustragung", homie.TypeFloat).SetUnit("A").Node().
+		AddProperty(PROPERTY_STROM_ASCHEAUSTRAGUNG, "Strom Ascheaustragung", homie.TypeFloat).SetUnit("A").Node().
+		AddProperty(PROPERTY_STROM_EINSCHUB, "Strom Einschub", homie.TypeFloat).SetUnit("A").Node().
+		AddProperty(PROPERTY_STROM_EINSCHUB, "Strom Einschub", homie.TypeFloat).SetUnit("A").Node().
 		Device().
 		AddNode("heizkreis1", "Heizkreis 1", "Heizkreis 1").
-		AddProperty("vorlaufTemperatur", "Vorlauftemperatur", homie.TypeFloat).SetUnit("°C").Node().
-		AddProperty("vorlaufSollTemperatur", "Vorlauf Solltemperatur", homie.TypeFloat).SetUnit("°C").Node().
+		AddProperty(PROPERTY_VORLAUF_TEMPERATUR, "Vorlauftemperatur", homie.TypeFloat).SetUnit("°C").Node().
+		AddProperty(PROPERTY_VORLAUF_SOLL_TEMPERATUR, "Vorlauf Solltemperatur", homie.TypeFloat).SetUnit("°C").Node().
 		Device().
 		AddNode("heizkreis2", "Heizkreis 2", "Heizkreis 2").
-		AddProperty("vorlaufTemperatur", "Vorlauftemperatur", homie.TypeFloat).SetUnit("°C").Node().
-		AddProperty("vorlaufSollTemperatur", "Vorlauf Solltemperatur", homie.TypeFloat).SetUnit("°C").Node().
+		AddProperty(PROPERTY_VORLAUF_TEMPERATUR, "Vorlauftemperatur", homie.TypeFloat).SetUnit("°C").Node().
+		AddProperty(PROPERTY_VORLAUF_SOLL_TEMPERATUR, "Vorlauf Solltemperatur", homie.TypeFloat).SetUnit("°C").Node().
 		Device().
-		AddNode("stoerung", "Störung", "Störung").
-		AddProperty("nr", "Nummer", homie.TypeInteger).Node().
-		AddProperty("text", "Text", homie.TypeString).Node().Device()
+		AddNode(NODE_STOERUNG, "Störung", "Störung").
+		AddProperty(PROPERTY_NR, "Nummer", homie.TypeInteger).Node().
+		AddProperty(PROPERTY_TEXT, "Text", homie.TypeString).Node().Device()
 
 	homieDevice.OnSet(onSet)
 
@@ -357,16 +419,62 @@ func main() {
 		}
 		fields := strings.Fields(strings.TrimSpace(line))
 
-		if fields[0] == "pm" {
+		switch fields[0] {
+		case "pm":
 			record, err := parseStatusRecord(fields)
 			if err != nil {
 				log.Println("Error parsing status record:", err)
 				continue
 			}
 			publishStatusRecord(homieDevice, record)
-		} else {
+		case "z":
+			{
+				handleStoerung(fields, line)
+			}
+		default:
 			fmt.Print("Unknown record receive:" + line)
 		}
 	}
 
+}
+
+// handleStoerung processes a line of input to determine if it contains a "Stoerung" (disturbance) record.
+// If a disturbance is detected, it updates the corresponding properties of the homieDevice.
+//
+// Parameters:
+//   - fields: A slice of strings representing the fields of the input line.
+//   - line: The original input line as a string.
+//
+// The function checks if the second field matches the pattern "St.rung" to identify a disturbance.
+// If a disturbance is found, it further checks if the third field is "Set" to determine the disturbance number and text.
+// These values are then set to the corresponding properties of the homieDevice.
+// If no disturbance is found, the function prints the unknown record.
+func handleStoerung(fields []string, line string) {
+	isStoerung, err := regexp.MatchString("St.rung", fields[1])
+	if err != nil {
+		log.Println("Error matching regex:", err)
+		return
+	}
+	if isStoerung {
+
+		set := fields[2] == "Set"
+		var stoerNr int
+		var stoerungText string
+		if set {
+			stoerNr, err = strconv.Atoi(fields[3])
+			if err != nil {
+				log.Printf("Expected value of fields[3] (%s): %s", fields[3], err)
+				return
+			}
+			stoerungText = getStoerungText(stoerNr)
+		} else {
+			stoerNr = 0
+			stoerungText = ""
+		}
+
+		homieDevice.Node(NODE_STOERUNG).Property(PROPERTY_NR).Set(stoerNr)
+		homieDevice.Node(NODE_STOERUNG).Property(PROPERTY_TEXT).Set(stoerungText)
+	} else {
+		fmt.Print("Unknown record receive:" + line)
+	}
 }
