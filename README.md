@@ -86,74 +86,22 @@ The application publishes the status values of the Hargassner heating system. It
 
 ##### Properties
 
-- **ID**: `rauchgasTemperatur`
-  - **Name**: `Rauchgas Temperatur`
-  - **Type**: `float`
-  - **Unit**: `°C`
-
-- **ID**: `boiler1Temperatur`
-  - **Name**: `Boiler 1 Temperatur`
-  - **Type**: `float`
-  - **Unit**: `°C`
-
-- **ID**: `aussenTemperaturAktuell`
-  - **Name**: `Aussentemperatur aktuell`
-  - **Type**: `float`
-  - **Unit**: `°C`
-
-- **ID**: `aussenTemperaturGemittelt`
-  - **Name**: `Aussentemperatur gemittelt`
-  - **Type**: `float`
-  - **Unit**: `°C`
-
-- **ID**: `kesselTemperatur`
-  - **Name**: `Kesseltemperatur`
-  - **Type**: `float`
-  - **Unit**: `°C`
-
-- **ID**: `kesselSollTemperatur`
-  - **Name**: `Kesselsolltemperatur`
-  - **Type**: `float`
-  - **Unit**: `°C`
-
-- **ID**: `meldung`
-  - **Name**: `Meldung`
-  - **Type**: `string`
-
-- **ID**: `saugluftGeblaese`
-  - **Name**: `Saugluftgebläse`
-  - **Type**: `float`
-  - **Unit**: `°C`
-
-- **ID**: `primaerLuftGeblaese`
-  - **Name**: `Primärluftgebläse`
-  - **Type**: `float`
-  - **Unit**: `°C`
-
-- **ID**: `o2InAbgas`
-  - **Name**: `O2 in Abgas`
-  - **Type**: `float`
-  - **Unit**: `%`
-
-- **ID**: `foerderMenge`
-  - **Name**: `Fördermenge`
-  - **Type**: `float`
-  - **Unit**: `%`
-
-- **ID**: `stromRaumaustragung`
-  - **Name**: `Strom Raumaustragung`
-  - **Type**: `float`
-  - **Unit**: `A`
-
-- **ID**: `stromAscheaustragung`
-  - **Name**: `Strom Ascheaustragung`
-  - **Type**: `float`
-  - **Unit**: `A`
-
-- **ID**: `stromEinschub`
-  - **Name**: `Strom Einschub`
-  - **Type**: `float`
-  - **Unit**: `A`
+| **ID**                  | **Name**                   | **Type** | **Unit** |
+|-------------------------|----------------------------|----------|----------|
+| `rauchgasTemperatur`    | Rauchgas Temperatur        | float    | °C       |
+| `boiler1Temperatur`     | Boiler 1 Temperatur        | float    | °C       |
+| `aussenTemperaturAktuell` | Aussentemperatur aktuell  | float    | °C       |
+| `aussenTemperaturGemittelt` | Aussentemperatur gemittelt | float | °C       |
+| `kesselTemperatur`      | Kesseltemperatur           | float    | °C       |
+| `kesselSollTemperatur`  | Kesselsolltemperatur       | float    | °C       |
+| `meldung`               | Meldung                    | string   |          |
+| `saugluftGeblaese`      | Saugluftgebläse            | float    | °C       |
+| `primaerLuftGeblaese`   | Primärluftgebläse          | float    | °C       |
+| `o2InAbgas`             | O2 in Abgas                | float    | %        |
+| `foerderMenge`          | Fördermenge                | float    | %        |
+| `stromRaumaustragung`   | Strom Raumaustragung       | float    | A        |
+| `stromAscheaustragung`  | Strom Ascheaustragung      | float    | A        |
+| `stromEinschub`         | Strom Einschub             | float    | A        |
 
 #### Heizkreis 1
 
@@ -163,15 +111,10 @@ The application publishes the status values of the Hargassner heating system. It
 
 ##### Properties
 
-- **ID**: `vorlaufTemperatur`
-  - **Name**: `Vorlauftemperatur`
-  - **Type**: `float`
-  - **Unit**: `°C`
-
-- **ID**: `vorlaufSollTemperatur`
-  - **Name**: `Vorlauf Solltemperatur`
-  - **Type**: `float`
-  - **Unit**: `°C`
+| **ID**                  | **Name**                   | **Type** | **Unit** |
+|-------------------------|----------------------------|----------|----------|
+| `vorlaufTemperatur`     | Vorlauftemperatur          | float    | °C       |
+| `vorlaufSollTemperatur` | Vorlauf Solltemperatur     | float    | °C       |
 
 #### Heizkreis 2
 
@@ -181,15 +124,10 @@ The application publishes the status values of the Hargassner heating system. It
 
 ##### Properties
 
-- **ID**: `vorlaufTemperatur`
-  - **Name**: `Vorlauftemperatur`
-  - **Type**: `float`
-  - **Unit**: `°C`
-
-- **ID**: `vorlaufSollTemperatur`
-  - **Name**: `Vorlauf Solltemperatur`
-  - **Type**: `float`
-  - **Unit**: `°C`
+| **ID**                  | **Name**                   | **Type** | **Unit** |
+|-------------------------|----------------------------|----------|----------|
+| `vorlaufTemperatur`     | Vorlauftemperatur          | float    | °C       |
+| `vorlaufSollTemperatur` | Vorlauf Solltemperatur     | float    | °C       |
 
 #### Störung
 
@@ -199,10 +137,7 @@ The application publishes the status values of the Hargassner heating system. It
 
 ##### Properties
 
-- **ID**: `nr`
-  - **Name**: `Nummer`
-  - **Type**: `integer`
-
-- **ID**: `text`
-  - **Name**: `Text`
-  - **Type**: `string`
+| **ID** | **Name** | **Type** |
+|--------|----------|----------|
+| `nr`   | Nummer   | integer  |
+| `text` | Text     | string   |
