@@ -450,11 +450,13 @@ func main() {
 }
 
 func handleZRecord(fields []string, line string) {
+
+	log.Printf("Handling Z record: fields:[%s]", strings.Join(fields, "|"))
 	isStoerung := strings.HasPrefix(fields[2], "St") && strings.HasSuffix(fields[2], "rung")
 	if isStoerung {
 		// 0.1........2........3...4.5
 		// z 18:39:41 Stoerung Set 7 Stop:1
-		// 0.1........2........3... 4
+		// 0.1........2.......3....4
 		// z 18:40:16 Störung Quit 0007
 
 		var active bool
