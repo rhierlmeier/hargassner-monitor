@@ -281,7 +281,7 @@ func main() {
 
 	port, err := serial.Open(serialDevice, mode)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("could not open %s: %s", serialDevice, err)
 		os.Exit(1)
 	}
 
