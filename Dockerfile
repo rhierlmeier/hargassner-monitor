@@ -8,7 +8,7 @@ WORKDIR /app
 COPY go.mod go.sum ./
 
 # Add the missing module and download all dependencies. Dependencies will be cached if the go.mod and go.sum files are not changed
-RUN go get golang.org/x/sys/unix && go mod download
+RUN go mod download
  
 # Copy the source from the current directory to the Working Directory inside the container
 COPY . .
@@ -17,14 +17,15 @@ COPY . .
 RUN mkdir -p build && go build -o build/hargassner-monitor main.go
 # Run tests
 RUN go test ./...
+
 # Start a new stage from scratch
 FROM alpine:latest
 
 # Set the Current Working Directory inside the container
-WORKDIR /root/
+WORKDIR /app/
 
 # Copy the Pre-built binary file from the previous stage
-COPY --from=builder /app/build/hargassner-monitor .
+COPY --from=builder /app/build/hargassner-monitor /app/
 
 ENV HARGASSNER_MONITOR_PORT=8080
 ENV HARGASSNER_SERIAL_DEVICE=/dev/ttyUSB0
@@ -35,4 +36,4 @@ ENV HARGASSNER_MQTT_PASSWORD=
 
 
 # Command to run the executable
-CMD ["./hargassner-monitor"]
+CMD ["/app/hargassner-monitor"]
