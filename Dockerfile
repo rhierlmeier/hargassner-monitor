@@ -14,7 +14,7 @@ RUN go mod download
 COPY . .
 
 # Build the Go app
-RUN mkdir -p build && go build -o build/hargassner-monitor main.go
+RUN CGO_ENABLED=0 go build -o build/hargassner-monitor main.go
 # Run tests
 RUN go test ./...
 
@@ -36,4 +36,4 @@ ENV HARGASSNER_MQTT_PASSWORD=
 
 
 # Command to run the executable
-CMD ["/app/hargassner-monitor"]
+ENTRYPOINT ["/app/hargassner-monitor"]
