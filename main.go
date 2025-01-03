@@ -261,7 +261,7 @@ func onSet(topic, value string, dataType homie.PropertyType) {
 }
 
 func publish(topic, value string) {
-	mqttClient.Publish(topic, 0, true, value)
+	mqttClient.Publish(topic, 0, false, value)
 }
 
 func onConnectionLost(client mqtt.Client, err error) {
@@ -279,7 +279,7 @@ func onConnected(client mqtt.Client) {
 func publishAllHomieAttributes() {
 	// get the full homie definition to send to MQTT - you only need to send it once unless it's changing over time
 	for _, attribute := range homieDevice.GetHomieAttributes() {
-		publish(attribute.Topic, attribute.Value)
+		mqttClient.Publish(attribute.Topic, 0, true, attribute.Value)
 	}
 }
 
