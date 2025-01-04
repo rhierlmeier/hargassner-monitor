@@ -532,6 +532,9 @@ func setStoerungHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Update the stoerungRecord with the new values
 	stoerungRecord.StoerungNr.SetValue(req.StoerNr)
+	if req.StoerMeldung == "" {
+		req.StoerMeldung = getStoerungText(req.StoerNr)
+	}
 	stoerungRecord.StoerungText.SetValue(req.StoerMeldung)
 	stoerungRecord.StoerungActive.SetValue(true)
 	stoerungRecord.LastActive.SetValue(time.Now().Format("15:04:05"))

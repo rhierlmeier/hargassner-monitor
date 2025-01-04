@@ -6,8 +6,7 @@ POST http://heizung.rhhome.de:8080/stoerung
 Content-Type: application/json
 
 {
-  "stoerNr": 1,
-  "stoerMeldung": "Test Stoerung"
+  "stoerNr": 7
 }
 
 ### Delete Stoerung
