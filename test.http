@@ -1,0 +1,14 @@
+### Get Stoerung
+GET http://heizung.rhhome.de:8080/stoerung
+
+### Create Stoerung
+POST http://heizung.rhhome.de:8080/stoerung
+Content-Type: application/json
+
+{
+  "stoerNr": 1,
+  "stoerMeldung": "Test Stoerung"
+}
+
+### Delete Stoerung
+DELETE http://heizung.rhhome.de:8080/stoerung

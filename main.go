@@ -2,12 +2,14 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/creativeprojects/go-homie"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
@@ -366,6 +368,7 @@ func main() {
 	httpPort := getEnv("HARGASSNER_MONITOR_PORT", "8080")
 
 	http.HandleFunc("/readiness", readinessProbe)
+	http.HandleFunc("/stoerung", handleStoerung)
 
 	go func() {
 		log.Fatal(http.ListenAndServe(":"+httpPort, nil))
@@ -474,4 +477,74 @@ func handleZRecord(fields []string, line string) {
 		message := strings.Join(fields[2:], " ")
 		meldung.SetValue(message)
 	}
+}
+
+type StoerungRequest struct {
+	StoerNr      int    `json:"stoerNr"`
+	StoerMeldung string `json:"stoerMeldung"`
+}
+
+type StoerungResponse struct {
+	StoerNr      int    `json:"stoerNr"`
+	StoerMeldung string `json:"stoerMeldung"`
+	Since        string `json:"since"`
+}
+
+func handleStoerung(w http.ResponseWriter, r *http.Request) {
+
+	switch r.Method {
+	case "POST":
+		setStoerungHandler(w, r)
+	case "DELETE":
+		resetStoerungHandler(w)
+	case "GET":
+		getStoerung(w)
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+
+}
+
+func getStoerung(w http.ResponseWriter) {
+
+	if !stoerungRecord.StoerungActive.Value {
+		http.Error(w, "No Stoerung", http.StatusNotFound)
+		return
+	}
+	stoerung := StoerungResponse{
+		StoerNr:      stoerungRecord.StoerungNr.Value,
+		StoerMeldung: stoerungRecord.StoerungText.Value,
+		Since:        stoerungRecord.LastActive.Value,
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(stoerung); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func setStoerungHandler(w http.ResponseWriter, r *http.Request) {
+
+	var req StoerungRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Update the stoerungRecord with the new values
+	stoerungRecord.StoerungNr.SetValue(req.StoerNr)
+	stoerungRecord.StoerungText.SetValue(req.StoerMeldung)
+	stoerungRecord.StoerungActive.SetValue(true)
+	stoerungRecord.LastActive.SetValue(time.Now().Format("15:04:05"))
+
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintf(w, "Störung updated successfully")
+}
+
+func resetStoerungHandler(w http.ResponseWriter) {
+	// Reset the stoerungRecord to default values
+	stoerungRecord.StoerungActive.SetValue(false)
+	stoerungRecord.LastActive.SetValue(time.Now().Format("15:04:05"))
+
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintf(w, "Störung reset successfully")
 }
