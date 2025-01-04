@@ -87,138 +87,71 @@ func readinessProbe(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Service is ready"))
 }
 
+func parseField(fields []string, index int, fieldName string, consumer interface{}) {
+	if index >= len(fields) {
+		log.Fatalf("index %d out of range for fields", index)
+	}
+	value := fields[index]
+	switch v := consumer.(type) {
+	case *int:
+		parsedValue, err := strconv.Atoi(value)
+		if err != nil {
+			log.Printf("invalid int field[%d] [%s]: %v (fields: %s)", index, fieldName, err, strings.Join(fields, "|"))
+			return
+		}
+		*v = parsedValue
+	case *float64:
+		parsedValue, err := strconv.ParseFloat(value, 64)
+		if err != nil {
+			log.Printf("invalid float field[%d] [%s]: %v (fields: %s)", index, fieldName, err, strings.Join(fields, "|"))
+			return
+		}
+		*v = parsedValue
+	case *string:
+		*v = value
+	default:
+		log.Fatalf("unsupported consumer type for field %s at %d", fieldName, index)
+	}
+}
+
 func parseStatusRecord(fields []string) (*StatusRecord, error) {
 	if len(fields) < 32 {
 		return nil, fmt.Errorf("not enough fields")
 	}
 
 	record := &StatusRecord{}
-	var err error
 
-	record.PrimaryAirFan, err = strconv.Atoi(fields[1])
-	if err != nil {
-		return nil, fmt.Errorf("invalid field %s at %d: %v", "PrimaryAirFan", 1, err)
-	}
-	record.ExhaustFan, err = strconv.Atoi(fields[2])
-	if err != nil {
-		return nil, fmt.Errorf("invalid field %s at %d: %v", "ExhaustFan", 2, err)
-	}
-	record.O2InExhaustGas, err = strconv.ParseFloat(fields[3], 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid field %s at %d: %v", "O2InExhaustGas", 3, err)
-	}
-	record.BoilerTemperature, err = strconv.Atoi(fields[4])
-	if err != nil {
-		return nil, fmt.Errorf("invalid field %s at %d: %v", "BoilerTemperature", 4, err)
-	}
-	record.ExhaustGasTemperature, err = strconv.Atoi(fields[5])
-	if err != nil {
-		return nil, fmt.Errorf("invalid field %s at %d: %v", "ExhaustGasTemperature", 5, err)
-	}
-	record.CurrentOutdoorTemperature, err = strconv.ParseFloat(fields[6], 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid field %s at %d: %v", "CurrentOutdoorTemperature", 6, err)
-	}
-	record.AverageOutdoorTemperature, err = strconv.ParseFloat(fields[7], 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid field %s at %d: %v", "AverageOutdoorTemperature", 7, err)
-	}
-	record.FlowTemperatureCircuit1, err = strconv.ParseFloat(fields[8], 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid field %s at %d: %v", "FlowTemperatureCircuit1", 8, err)
-	}
-	record.FlowTemperatureCircuit2, err = strconv.ParseFloat(fields[9], 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid field %s at %d: %v", "FlowTemperatureCircuit2", 9, err)
-	}
-	record.FlowTemperatureCircuit1Set, err = strconv.ParseFloat(fields[10], 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid field %s at %d: %v", "FlowTemperatureCircuit1Set", 10, err)
-	}
-	record.FlowTemperatureCircuit2Set, err = strconv.ParseFloat(fields[11], 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid field %s at %d: %v", "FlowTemperatureCircuit2Set", 11, err)
-	}
-	record.ReturnBoiler2BufferTemp, err = strconv.Atoi(fields[12])
-	if err != nil {
-		return nil, fmt.Errorf("invalid field %s at %d: %v", "ReturnBoiler2BufferTemp", 12, err)
-	}
-	record.BoilerTemperature1, err = strconv.Atoi(fields[13])
-	if err != nil {
-		return nil, fmt.Errorf("invalid field %s at %d: %v", "BoilerTemperature1", 13, err)
-	}
-	record.FeedRate, err = strconv.Atoi(fields[14])
-	if err != nil {
-		return nil, fmt.Errorf("invalid field %s at %d: %v", "FeedRate", 14, err)
-	}
-	record.BoilerSetTemperature, err = strconv.Atoi(fields[15])
-	if err != nil {
-		return nil, fmt.Errorf("invalid field %s at %d: %v", "BoilerSetTemperature", 15, err)
-	}
-	record.CurrentUnderpressure, err = strconv.ParseFloat(fields[16], 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid field %s at %d: %v", "CurrentUnderpressure", 16, err)
-	}
-	record.AverageUnderpressure, err = strconv.ParseFloat(fields[17], 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid field %s at %d: %v", "AverageUnderpressure", 17, err)
-	}
-	record.SetUnderpressure, err = strconv.ParseFloat(fields[18], 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid field %s at %d: %v", "SetUnderpressure", 18, err)
-	}
-	record.FlowTemperatureCircuit3, err = strconv.ParseFloat(fields[19], 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid field %s at %d: %v", "FlowTemperatureCircuit3", 19, err)
-	}
-	record.FlowTemperatureCircuit4, err = strconv.ParseFloat(fields[20], 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid field %s at %d: %v", "FlowTemperatureCircuit4", 20, err)
-	}
-	record.FlowTemperatureCircuit3Set, err = strconv.ParseFloat(fields[21], 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid field %s at %d: %v", "FlowTemperatureCircuit3Set", 21, err)
-	}
-	record.FlowTemperatureCircuit4Set, err = strconv.ParseFloat(fields[22], 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid field %s at %d: %v", "FlowTemperatureCircuit4Set", 22, err)
-	}
-	record.BoilerTemperature2SM, err = strconv.ParseFloat(fields[23], 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid field %s at %d: %v", "BoilerTemperature2SM", 23, err)
-	}
-	record.HK1FR25, err = strconv.ParseFloat(fields[24], 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid field %s at %d: %v", "HK1FR25", 24, err)
-	}
-	record.HK2FR25, err = strconv.ParseFloat(fields[25], 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid field %s at %d: %v", "HK2FR25", 25, err)
-	}
-	record.HK3FR25SM, err = strconv.ParseFloat(fields[26], 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid field %s at %d: %v", "HK3FR25SM", 26, err)
-	}
-	record.HK4FR25SM, err = strconv.ParseFloat(fields[27], 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid field %s at %d: %v", "HK4FR25SM", 27, err)
-	}
-	record.BoilerState, err = strconv.ParseFloat(fields[28], 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid field %s at %d: %v", "BoilerState", 28, err)
-	}
-	record.MotorCurrentFeedScrew, err = strconv.ParseFloat(fields[29], 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid field %s at %d: %v", "MotorCurrentFeedScrew", 29, err)
-	}
-	record.MotorCurrentAshDischarge, err = strconv.ParseFloat(fields[30], 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid field %s at %d: %v", "MotorCurrentAshDischarge", 30, err)
-	}
-	record.MotorCurrentRoomDischarge, err = strconv.ParseFloat(fields[31], 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid field %s at %d: %v", "MotorCurrentRoomDischarge", 31, err)
-	}
+	parseField(fields, 1, "PrimaryAirFan", &record.PrimaryAirFan)
+	parseField(fields, 2, "ExhaustFan", &record.ExhaustFan)
+	parseField(fields, 3, "O2InExhaustGas", &record.O2InExhaustGas)
+	parseField(fields, 4, "BoilerTemperature", &record.BoilerTemperature)
+	parseField(fields, 5, "ExhaustGasTemperature", &record.ExhaustGasTemperature)
+	parseField(fields, 6, "CurrentOutdoorTemperature", &record.CurrentOutdoorTemperature)
+	parseField(fields, 7, "AverageOutdoorTemperature", &record.AverageOutdoorTemperature)
+	parseField(fields, 8, "FlowTemperatureCircuit1", &record.FlowTemperatureCircuit1)
+	parseField(fields, 9, "FlowTemperatureCircuit2", &record.FlowTemperatureCircuit2)
+	parseField(fields, 10, "FlowTemperatureCircuit1Set", &record.FlowTemperatureCircuit1Set)
+	parseField(fields, 11, "FlowTemperatureCircuit2Set", &record.FlowTemperatureCircuit2Set)
+	parseField(fields, 12, "ReturnBoiler2BufferTemp", &record.ReturnBoiler2BufferTemp)
+	parseField(fields, 13, "BoilerTemperature1", &record.BoilerTemperature1)
+	parseField(fields, 14, "FeedRate", &record.FeedRate)
+	parseField(fields, 15, "BoilerSetTemperature", &record.BoilerSetTemperature)
+	parseField(fields, 16, "CurrentUnderpressure", &record.CurrentUnderpressure)
+	parseField(fields, 17, "AverageUnderpressure", &record.AverageUnderpressure)
+	parseField(fields, 18, "SetUnderpressure", &record.SetUnderpressure)
+	parseField(fields, 19, "FlowTemperatureCircuit3", &record.FlowTemperatureCircuit3)
+	parseField(fields, 20, "FlowTemperatureCircuit4", &record.FlowTemperatureCircuit4)
+	parseField(fields, 21, "FlowTemperatureCircuit3Set", &record.FlowTemperatureCircuit3Set)
+	parseField(fields, 22, "FlowTemperatureCircuit4Set", &record.FlowTemperatureCircuit4Set)
+	parseField(fields, 23, "BoilerTemperature2SM", &record.BoilerTemperature2SM)
+	parseField(fields, 24, "HK1FR25", &record.HK1FR25)
+	parseField(fields, 25, "HK2FR25", &record.HK2FR25)
+	parseField(fields, 26, "HK3FR25SM", &record.HK3FR25SM)
+	parseField(fields, 27, "HK4FR25SM", &record.HK4FR25SM)
+	parseField(fields, 28, "BoilerState", &record.BoilerState)
+	parseField(fields, 29, "MotorCurrentFeedScrew", &record.MotorCurrentFeedScrew)
+	parseField(fields, 30, "MotorCurrentAshDischarge", &record.MotorCurrentAshDischarge)
+	parseField(fields, 31, "MotorCurrentRoomDischarge", &record.MotorCurrentRoomDischarge)
 
 	return record, nil
 }
@@ -349,7 +282,6 @@ func main() {
 	port, err := serial.Open(serialDevice, mode)
 	if err != nil {
 		log.Fatalf("could not open %s: %s", serialDevice, err)
-		os.Exit(1)
 	}
 
 	homieDevice = homie.
@@ -413,7 +345,6 @@ func main() {
 	mqttClient = mqtt.NewClient(opts)
 	if token := mqttClient.Connect(); token.Wait() && token.Error() != nil {
 		log.Fatal(token.Error())
-		os.Exit(1)
 	}
 
 	publishAllHomieAttributes()
@@ -428,7 +359,15 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
+
+		line, err = strconv.Unquote(strings.Replace(strconv.Quote(line), `\\x`, `\x`, -1))
+		if err != nil {
+			log.Fatal(err)
+		}
+
 		fields := strings.Fields(strings.TrimSpace(line))
+
+		log.Printf("Received fields: %s", strings.Join(fields, "|"))
 
 		switch fields[0] {
 		case "pm":
@@ -466,7 +405,7 @@ func handleZRecord(fields []string, line string) {
 		case "Quit":
 			active = false
 		default:
-			log.Fatalf("Unexpected value of fields[3] (%s): %s (line: %s)", fields[3], "Set or Quit", line)
+			log.Printf("Unexpected value of fields[3] (%s): %s (line: %s)", fields[3], "Set or Quit", line)
 			return
 		}
 
@@ -478,7 +417,7 @@ func handleZRecord(fields []string, line string) {
 		stoerungText := getStoerungText(stoerNr)
 
 		if active {
-			log.Fatalf("Störung %d: %s", stoerNr, stoerungText)
+			log.Printf("Störung %d: %s", stoerNr, stoerungText)
 		} else {
 			log.Printf("Quit Störung %d: %s", stoerNr, stoerungText)
 		}
