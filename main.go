@@ -546,6 +546,8 @@ func setStoerungHandler(w http.ResponseWriter, r *http.Request) {
 func resetStoerungHandler(w http.ResponseWriter) {
 	// Reset the stoerungRecord to default values
 	stoerungRecord.StoerungActive.SetValue(false)
+	stoerungRecord.StoerungNr.SetValue(0)
+	stoerungRecord.StoerungText.SetValue("")
 	stoerungRecord.LastActive.SetValue(time.Now().Format("15:04:05"))
 
 	w.WriteHeader(http.StatusOK)
