@@ -48,38 +48,84 @@ const (
 	PROPERTY_LAST_CHANGE = "lastChange"
 )
 
+type MultiLanguageString struct {
+	EN string
+	DE string
+}
+
+type StatusField[T any] struct {
+	Id    string
+	Value T
+	Name  MultiLanguageString
+	Unit  string
+}
+
 type StatusRecord struct {
-	PrimaryAirFan              int
-	ExhaustFan                 int
-	O2InExhaustGas             float64
-	BoilerTemperature          int
-	ExhaustGasTemperature      int
-	CurrentOutdoorTemperature  float64
-	AverageOutdoorTemperature  float64
-	FlowTemperatureCircuit1    float64
-	FlowTemperatureCircuit2    float64
-	FlowTemperatureCircuit1Set float64
-	FlowTemperatureCircuit2Set float64
-	ReturnBoiler2BufferTemp    int
-	BoilerTemperature1         int
-	FeedRate                   int
-	BoilerSetTemperature       int
-	CurrentUnderpressure       float64
-	AverageUnderpressure       float64
-	SetUnderpressure           float64
-	FlowTemperatureCircuit3    float64
-	FlowTemperatureCircuit4    float64
-	FlowTemperatureCircuit3Set float64
-	FlowTemperatureCircuit4Set float64
-	BoilerTemperature2SM       float64
-	HK1FR25                    float64
-	HK2FR25                    float64
-	HK3FR25SM                  float64
-	HK4FR25SM                  float64
-	BoilerState                float64
-	MotorCurrentFeedScrew      float64
-	MotorCurrentAshDischarge   float64
-	MotorCurrentRoomDischarge  float64
+	PrimaryAirFan              StatusField[int]
+	ExhaustFan                 StatusField[int]
+	O2InExhaustGas             StatusField[float64]
+	BoilerTemperature          StatusField[int]
+	ExhaustGasTemperature      StatusField[int]
+	CurrentOutdoorTemperature  StatusField[float64]
+	AverageOutdoorTemperature  StatusField[float64]
+	FlowTemperatureCircuit1    StatusField[float64]
+	FlowTemperatureCircuit2    StatusField[float64]
+	FlowTemperatureCircuit1Set StatusField[float64]
+	FlowTemperatureCircuit2Set StatusField[float64]
+	ReturnBoiler2BufferTemp    StatusField[int]
+	BoilerTemperature1         StatusField[int]
+	FeedRate                   StatusField[int]
+	BoilerSetTemperature       StatusField[int]
+	CurrentUnderpressure       StatusField[float64]
+	AverageUnderpressure       StatusField[float64]
+	SetUnderpressure           StatusField[float64]
+	FlowTemperatureCircuit3    StatusField[float64]
+	FlowTemperatureCircuit4    StatusField[float64]
+	FlowTemperatureCircuit3Set StatusField[float64]
+	FlowTemperatureCircuit4Set StatusField[float64]
+	BoilerTemperature2SM       StatusField[float64]
+	HK1FR25                    StatusField[float64]
+	HK2FR25                    StatusField[float64]
+	HK3FR25SM                  StatusField[float64]
+	HK4FR25SM                  StatusField[float64]
+	MotorCurrentFeedScrew      StatusField[float64]
+	MotorCurrentAshDischarge   StatusField[float64]
+	MotorCurrentRoomDischarge  StatusField[float64]
+}
+
+func newEmptyStatusRecord() *StatusRecord {
+	return &StatusRecord{
+		PrimaryAirFan:              StatusField[int]{Id: "PrimaryAirFan", Name: MultiLanguageString{EN: "Primary Air Fan", DE: "Primärluftgebläse"}, Unit: "%"},
+		ExhaustFan:                 StatusField[int]{Id: "ExhaustFan", Name: MultiLanguageString{EN: "Exhaust Fan", DE: "Abgasgebläse"}, Unit: "%"},
+		O2InExhaustGas:             StatusField[float64]{Id: "O2InExhaustGas", Name: MultiLanguageString{EN: "O2 in Exhaust Gas", DE: "O2 im Abgas"}, Unit: "%"},
+		BoilerTemperature:          StatusField[int]{Id: "BoilerTemperature", Name: MultiLanguageString{EN: "Boiler Temperature", DE: "Kesseltemperatur"}, Unit: "°C"},
+		ExhaustGasTemperature:      StatusField[int]{Id: "ExhaustGasTemperature", Name: MultiLanguageString{EN: "Exhaust Gas Temperature", DE: "Rauchgastemperatur"}, Unit: "°C"},
+		CurrentOutdoorTemperature:  StatusField[float64]{Id: "CurrentOutdoorTemperature", Name: MultiLanguageString{EN: "Current Outdoor Temperature", DE: "Aktuelle Außentemperatur"}, Unit: "°C"},
+		AverageOutdoorTemperature:  StatusField[float64]{Id: "AverageOutdoorTemperature", Name: MultiLanguageString{EN: "Average Outdoor Temperature", DE: "Durchschnittliche Außentemperatur"}, Unit: "°C"},
+		FlowTemperatureCircuit1:    StatusField[float64]{Id: "FlowTemperatureCircuit1", Name: MultiLanguageString{EN: "Flow Temperature Circuit 1", DE: "Vorlauftemperatur Kreis 1"}, Unit: "°C"},
+		FlowTemperatureCircuit2:    StatusField[float64]{Id: "FlowTemperatureCircuit2", Name: MultiLanguageString{EN: "Flow Temperature Circuit 2", DE: "Vorlauftemperatur Kreis 2"}, Unit: "°C"},
+		FlowTemperatureCircuit1Set: StatusField[float64]{Id: "FlowTemperatureCircuit1Set", Name: MultiLanguageString{EN: "Flow Temperature Circuit 1 Set", DE: "Soll-Vorlauftemperatur Kreis 1"}, Unit: "°C"},
+		FlowTemperatureCircuit2Set: StatusField[float64]{Id: "FlowTemperatureCircuit2Set", Name: MultiLanguageString{EN: "Flow Temperature Circuit 2 Set", DE: "Soll-Vorlauftemperatur Kreis 2"}, Unit: "°C"},
+		ReturnBoiler2BufferTemp:    StatusField[int]{Id: "ReturnBoiler2BufferTemp", Name: MultiLanguageString{EN: "Return Boiler to Buffer Temperature", DE: "Rücklauf Kessel zu Puffer Temperatur"}, Unit: "°C"},
+		BoilerTemperature1:         StatusField[int]{Id: "BoilerTemperature1", Name: MultiLanguageString{EN: "Boiler Temperature 1", DE: "Kesseltemperatur 1"}, Unit: "°C"},
+		FeedRate:                   StatusField[int]{Id: "FeedRate", Name: MultiLanguageString{EN: "Feed Rate", DE: "Fördermenge"}, Unit: "%"},
+		BoilerSetTemperature:       StatusField[int]{Id: "BoilerSetTemperature", Name: MultiLanguageString{EN: "Boiler Set Temperature", DE: "Kesselsolltemperatur"}, Unit: "°C"},
+		CurrentUnderpressure:       StatusField[float64]{Id: "CurrentUnderpressure", Name: MultiLanguageString{EN: "Current Underpressure", DE: "Aktueller Unterdruck"}, Unit: "Pa"},
+		AverageUnderpressure:       StatusField[float64]{Id: "AverageUnderpressure", Name: MultiLanguageString{EN: "Average Underpressure", DE: "Durchschnittlicher Unterdruck"}, Unit: "Pa"},
+		SetUnderpressure:           StatusField[float64]{Id: "SetUnderpressure", Name: MultiLanguageString{EN: "Set Underpressure", DE: "Soll-Unterdruck"}, Unit: "Pa"},
+		FlowTemperatureCircuit3:    StatusField[float64]{Id: "FlowTemperatureCircuit3", Name: MultiLanguageString{EN: "Flow Temperature Circuit 3", DE: "Vorlauftemperatur Kreis 3"}, Unit: "°C"},
+		FlowTemperatureCircuit4:    StatusField[float64]{Id: "FlowTemperatureCircuit4", Name: MultiLanguageString{EN: "Flow Temperature Circuit 4", DE: "Vorlauftemperatur Kreis 4"}, Unit: "°C"},
+		FlowTemperatureCircuit3Set: StatusField[float64]{Id: "FlowTemperatureCircuit3Set", Name: MultiLanguageString{EN: "Flow Temperature Circuit 3 Set", DE: "Soll-Vorlauftemperatur Kreis 3"}, Unit: "°C"},
+		FlowTemperatureCircuit4Set: StatusField[float64]{Id: "FlowTemperatureCircuit4Set", Name: MultiLanguageString{EN: "Flow Temperature Circuit 4 Set", DE: "Soll-Vorlauftemperatur Kreis 4"}, Unit: "°C"},
+		BoilerTemperature2SM:       StatusField[float64]{Id: "BoilerTemperature2SM", Name: MultiLanguageString{EN: "Boiler Temperature 2 SM", DE: "Kesseltemperatur 2 SM"}, Unit: "°C"},
+		HK1FR25:                    StatusField[float64]{Id: "HK1FR25", Name: MultiLanguageString{EN: "HK1 FR25", DE: "HK1 FR25"}, Unit: "°C"},
+		HK2FR25:                    StatusField[float64]{Id: "HK2FR25", Name: MultiLanguageString{EN: "HK2 FR25", DE: "HK2 FR25"}, Unit: "°C"},
+		HK3FR25SM:                  StatusField[float64]{Id: "HK3FR25SM", Name: MultiLanguageString{EN: "HK3 FR25 SM", DE: "HK3 FR25 SM"}, Unit: "°C"},
+		HK4FR25SM:                  StatusField[float64]{Id: "HK4FR25SM", Name: MultiLanguageString{EN: "HK4 FR25 SM", DE: "HK4 FR25 SM"}, Unit: "°C"},
+		MotorCurrentFeedScrew:      StatusField[float64]{Id: "MotorCurrentFeedScrew", Name: MultiLanguageString{EN: "Motor Current Feed Screw", DE: "Motorstrom Förderschnecke"}, Unit: "A"},
+		MotorCurrentAshDischarge:   StatusField[float64]{Id: "MotorCurrentAshDischarge", Name: MultiLanguageString{EN: "Motor Current Ash Discharge", DE: "Motorstrom Ascheaustragung"}, Unit: "A"},
+		MotorCurrentRoomDischarge:  StatusField[float64]{Id: "MotorCurrentRoomDischarge", Name: MultiLanguageString{EN: "Motor Current Room Discharge", DE: "Motorstrom Raumaustragung"}, Unit: "A"},
+	}
 }
 
 func readinessProbe(w http.ResponseWriter, r *http.Request) {
@@ -87,30 +133,30 @@ func readinessProbe(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Service is ready"))
 }
 
-func parseField(fields []string, index int, fieldName string, consumer interface{}) {
+func parseField[T any](fields []string, index int, field StatusField[T]) {
 	if index >= len(fields) {
 		log.Fatalf("index %d out of range for fields", index)
 	}
 	value := fields[index]
-	switch v := consumer.(type) {
-	case *int:
+	switch any(field.Value).(type) {
+	case int:
 		parsedValue, err := strconv.Atoi(value)
 		if err != nil {
-			log.Printf("invalid int field[%d] [%s]: %v (fields: %s)", index, fieldName, err, strings.Join(fields, "|"))
+			log.Printf("invalid int field[%d] [%s]: %v (fields: %s)", index, field.Id, err, strings.Join(fields, "|"))
 			return
 		}
-		*v = parsedValue
-	case *float64:
+		field.Value = any(parsedValue).(T)
+	case float64:
 		parsedValue, err := strconv.ParseFloat(value, 64)
 		if err != nil {
-			log.Printf("invalid float field[%d] [%s]: %v (fields: %s)", index, fieldName, err, strings.Join(fields, "|"))
+			log.Printf("invalid float field[%d] [%s]: %v (fields: %s)", index, field.Id, err, strings.Join(fields, "|"))
 			return
 		}
-		*v = parsedValue
-	case *string:
-		*v = value
+		field.Value = any(parsedValue).(T)
+	case string:
+		field.Value = any(value).(T)
 	default:
-		log.Fatalf("unsupported consumer type for field %s at %d", fieldName, index)
+		log.Fatalf("unsupported consumer type for field %s at %d", field.Id, index)
 	}
 }
 
@@ -119,39 +165,39 @@ func parseStatusRecord(fields []string) (*StatusRecord, error) {
 		return nil, fmt.Errorf("not enough fields")
 	}
 
-	record := &StatusRecord{}
+	record := newEmptyStatusRecord()
 
-	parseField(fields, 1, "PrimaryAirFan", &record.PrimaryAirFan)
-	parseField(fields, 2, "ExhaustFan", &record.ExhaustFan)
-	parseField(fields, 3, "O2InExhaustGas", &record.O2InExhaustGas)
-	parseField(fields, 4, "BoilerTemperature", &record.BoilerTemperature)
-	parseField(fields, 5, "ExhaustGasTemperature", &record.ExhaustGasTemperature)
-	parseField(fields, 6, "CurrentOutdoorTemperature", &record.CurrentOutdoorTemperature)
-	parseField(fields, 7, "AverageOutdoorTemperature", &record.AverageOutdoorTemperature)
-	parseField(fields, 8, "FlowTemperatureCircuit1", &record.FlowTemperatureCircuit1)
-	parseField(fields, 9, "FlowTemperatureCircuit2", &record.FlowTemperatureCircuit2)
-	parseField(fields, 10, "FlowTemperatureCircuit1Set", &record.FlowTemperatureCircuit1Set)
-	parseField(fields, 11, "FlowTemperatureCircuit2Set", &record.FlowTemperatureCircuit2Set)
-	parseField(fields, 12, "ReturnBoiler2BufferTemp", &record.ReturnBoiler2BufferTemp)
-	parseField(fields, 13, "BoilerTemperature1", &record.BoilerTemperature1)
-	parseField(fields, 14, "FeedRate", &record.FeedRate)
-	parseField(fields, 15, "BoilerSetTemperature", &record.BoilerSetTemperature)
-	parseField(fields, 16, "CurrentUnderpressure", &record.CurrentUnderpressure)
-	parseField(fields, 17, "AverageUnderpressure", &record.AverageUnderpressure)
-	parseField(fields, 18, "SetUnderpressure", &record.SetUnderpressure)
-	parseField(fields, 19, "FlowTemperatureCircuit3", &record.FlowTemperatureCircuit3)
-	parseField(fields, 20, "FlowTemperatureCircuit4", &record.FlowTemperatureCircuit4)
-	parseField(fields, 21, "FlowTemperatureCircuit3Set", &record.FlowTemperatureCircuit3Set)
-	parseField(fields, 22, "FlowTemperatureCircuit4Set", &record.FlowTemperatureCircuit4Set)
-	parseField(fields, 23, "BoilerTemperature2SM", &record.BoilerTemperature2SM)
-	parseField(fields, 24, "HK1FR25", &record.HK1FR25)
-	parseField(fields, 25, "HK2FR25", &record.HK2FR25)
-	parseField(fields, 26, "HK3FR25SM", &record.HK3FR25SM)
-	parseField(fields, 27, "HK4FR25SM", &record.HK4FR25SM)
-	parseField(fields, 28, "BoilerState", &record.BoilerState)
-	parseField(fields, 29, "MotorCurrentFeedScrew", &record.MotorCurrentFeedScrew)
-	parseField(fields, 30, "MotorCurrentAshDischarge", &record.MotorCurrentAshDischarge)
-	parseField(fields, 31, "MotorCurrentRoomDischarge", &record.MotorCurrentRoomDischarge)
+	parseField(fields, 1, record.PrimaryAirFan)
+	parseField(fields, 2, record.ExhaustFan)
+	parseField(fields, 3, record.O2InExhaustGas)
+	parseField(fields, 4, record.BoilerTemperature)
+	parseField(fields, 5, record.ExhaustGasTemperature)
+	parseField(fields, 6, record.CurrentOutdoorTemperature)
+	parseField(fields, 7, record.AverageOutdoorTemperature)
+	parseField(fields, 8, record.FlowTemperatureCircuit1)
+	parseField(fields, 9, record.FlowTemperatureCircuit2)
+	parseField(fields, 10, record.FlowTemperatureCircuit1Set)
+	parseField(fields, 11, record.FlowTemperatureCircuit2Set)
+	parseField(fields, 12, record.ReturnBoiler2BufferTemp)
+	parseField(fields, 13, record.BoilerTemperature1)
+	parseField(fields, 14, record.FeedRate)
+	parseField(fields, 15, record.BoilerSetTemperature)
+	parseField(fields, 16, record.CurrentUnderpressure)
+	parseField(fields, 17, record.AverageUnderpressure)
+	parseField(fields, 18, record.SetUnderpressure)
+	parseField(fields, 19, record.FlowTemperatureCircuit3)
+	parseField(fields, 20, record.FlowTemperatureCircuit4)
+	parseField(fields, 21, record.FlowTemperatureCircuit3Set)
+	parseField(fields, 22, record.FlowTemperatureCircuit4Set)
+	parseField(fields, 23, record.BoilerTemperature2SM)
+	parseField(fields, 24, record.HK1FR25)
+	parseField(fields, 25, record.HK2FR25)
+	parseField(fields, 26, record.HK3FR25SM)
+	parseField(fields, 27, record.HK4FR25SM)
+	// 28, 29, 30, 31 are not used
+	parseField(fields, 29, record.MotorCurrentFeedScrew)
+	parseField(fields, 30, record.MotorCurrentAshDischarge)
+	parseField(fields, 31, record.MotorCurrentRoomDischarge)
 
 	return record, nil
 }
