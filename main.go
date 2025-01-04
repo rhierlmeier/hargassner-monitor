@@ -394,7 +394,7 @@ func main() {
 
 	publishAllHomieAttributes()
 
-	//log.Printf("Reading from on %s", serialDevice)
+	log.Printf("Reading from on %s", serialDevice)
 	reader := bufio.NewReader(port)
 
 	reader.ReadString('\n')
@@ -412,7 +412,7 @@ func main() {
 
 		fields := strings.Fields(strings.TrimSpace(line))
 
-		log.Printf("Received fields: %s", strings.Join(fields, "|"))
+		//log.Printf("Received fields: %s", strings.Join(fields, "|"))
 
 		switch fields[0] {
 		case "pm":
