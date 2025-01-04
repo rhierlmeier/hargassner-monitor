@@ -394,7 +394,7 @@ func main() {
 
 	publishAllHomieAttributes()
 
-	log.Printf("Reading from on %s", serialDevice)
+	//log.Printf("Reading from on %s", serialDevice)
 	reader := bufio.NewReader(port)
 
 	reader.ReadString('\n')
