@@ -1,5 +1,5 @@
 # Use the official Golang image to create a build artifact.
-FROM golang:1.23 AS builder
+FROM golang:1.25.5 AS builder
 
 # Set the Current Working Directory inside the container
 WORKDIR /app
@@ -30,8 +30,8 @@ ENV HARGASSNER_MQTT_CLIENT_ID=hargassner-monitor
 # MQTT broker address (e.g tcp://localhost:1883 or ssl://localhost:8883)
 ENV HARGASSNER_MQTT_BROKER=tcp://localhost:1883
 # Optional username and password for MQTT
-ENV HARGASSNER_MQTT_USER=
-ENV HARGASSNER_MQTT_PASSWORD=
+ENV HARGASSNER_MQTT_USER=""
+ENV HARGASSNER_MQTT_PASSWORD=""
 
 ENV HARGASSNER_MONITOR_PORT=8080
 
