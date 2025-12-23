@@ -16,7 +16,7 @@ RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o build/hargassner-monitor main.go
 RUN go test ./...
 
 # Start a new stage from scratch
-FROM alpine:latest
+FROM alpine:3.23.2
 
 # Set the Current Working Directory inside the container
 WORKDIR /app/
