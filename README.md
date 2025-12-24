@@ -30,27 +30,27 @@ The project provides pre-built Docker images for different architectures. You ca
 
 #### Pulling the Docker Image
 
-To pull the Docker image for `amd64` architecture:
+To pull the Docker image for `amd64` architecture from GitHub Container Registry (GHCR):
 
 ```sh
-docker pull rhierlmeier/hargassner-monitor:amd64-latest
+docker pull ghcr.io/rhierlmeier/hargassner-monitor:amd64-latest
 ```
 
-To pull the Docker image for `arm64` architecture:
+To pull the Docker image for `arm64` architecture from GHCR:
 
 ```sh
-docker pull rhierlmeier/hargassner-monitor:arm64-latest
+docker pull ghcr.io/rhierlmeier/hargassner-monitor:arm64-latest
 ```
 
 #### Running the Docker Container
 
-To run the Docker container:
+To run the Docker container from GHCR:
 
 ```sh
 docker run --rm \
     -e HARGASSNER_SERIAL_PORT=
     -e HARGASSNER_MQTT_BROKER=tcp://mqtt.local
-    rhierlmeier/hargassner-monitor:latest
+    ghcr.io/rhierlmeier/hargassner-monitor:latest
 ```
 
 Replace `/dev/ttyUSB0` with the appropriate serial device on your system.
