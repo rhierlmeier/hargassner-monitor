@@ -24,6 +24,19 @@ WORKDIR /app/
 # Copy the Pre-built binary file from the previous stage
 COPY --from=builder /app/build/hargassner-monitor /app/
 
+# OCI labels (Open Container Initiative)
+# These provide metadata about the image and are compatible with the
+# `org.opencontainers` label schema.
+LABEL org.opencontainers.image.title="hargassner-monitor" \
+	org.opencontainers.image.description="Reads and parses status records from a Hargassner HSV heating system via a serial connection" \
+	org.opencontainers.image.url="https://github.com/rhierlmeier/hargassner-monitor" \
+	org.opencontainers.image.source="https://github.com/rhierlmeier/hargassner-monitor" \
+	org.opencontainers.image.licenses="GPL" \
+	org.opencontainers.image.authors="rhierlmeier" \
+	org.opencontainers.image.version="0.0.0" \
+	org.opencontainers.image.revision="${VCS_REF:-unknown}" \
+	org.opencontainers.image.created="${BUILD_DATE:-unknown}"
+
 ENV HARGASSNER_MONITOR_PORT=8080
 ENV HARGASSNER_SERIAL_DEVICE=/dev/ttyUSB0
 ENV HARGASSNER_MQTT_CLIENT_ID=hargassner-monitor
