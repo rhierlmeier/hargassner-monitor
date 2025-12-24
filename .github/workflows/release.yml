@@ -1,69 +1,58 @@
-name: Release
+# yaml
+name: gitflow-release
 
 on:
-  push:
-    branches:
-      - 'release/**'
-  workflow_dispatch:
-    inputs:
-      version:
-        description: 'Optional: Release version (e.g. 1.2.0)'
-        required: false
+  create:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   release:
+    if: startsWith(github.ref, 'refs/heads/release/')
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+
     steps:
-      - name: Clean cache directory
-        run: rm -rf $HOME/.cache/go-build/* $HOME/go/pkg/mod/*      
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}     # ensure checkout uses the workflow token
-          persist-credentials: true              # default true, but explicit helps readability
+          persist-credentials: true
 
-      - name: Set up Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: '1.25' # optional: anpassen an go.mod
-
-      - name: Run tests
-        run: go test ./...
-
-      - name: Determine version
-        id: ver
+      - name: Extract branch and version
+        id: vars
         run: |
-          if [ -n "${{ github.event.inputs.version }}" ]; then
-            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          BRANCH=${GITHUB_REF#refs/heads/}
+          VERSION=${BRANCH#release/}
+          VERSION=${VERSION#v}
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create annotated tag and push
+        env:
+          REPO: ${{ github.repository }}
+        run: |
+          TAG="v${{ steps.vars.outputs.version }}"
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor }}@users.noreply.github.com"
+          # If tag exists skip, otherwise create and push
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists, skipping creation."
           else
-            BRANCH=${GITHUB_REF#refs/heads/}
-            VERSION=${BRANCH#release/}
-            VERSION=${VERSION#v}
-            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            git tag -a "$TAG" -m "Release $TAG"
+            git push "https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${REPO}.git" "$TAG"
           fi
 
-      - name: Build binary
-        run: |
-          mkdir -p build
-          GOOS=linux GOARCH=amd64 go build -o build/hargassner-monitor
-
-      - name: Create and push tag
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          TAG="v${{ steps.ver.outputs.version }}"
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -a "$TAG" -m "Release $TAG"
-          git push origin "$TAG"
-
-      - name: Create GitHub Release
+      - name: Create GitHub release
         uses: actions/create-release@v1
+        with:
+          tag_name: v${{ steps.vars.outputs.version }}
+          release_name: Release v${{ steps.vars.outputs.version }}
+          body: |
+            Release automatisch erstellt von Branch `${{ steps.vars.outputs.branch }}`.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v${{ steps.ver.outputs.version }}
-          release_name: v${{ steps.ver.outputs.version }}
-          draft: false
-          prerelease: false
