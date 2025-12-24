@@ -4,55 +4,69 @@ name: gitflow-release
 on:
   create:
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  concurrency:
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
 
-jobs:
-  release:
-    if: startsWith(github.ref, 'refs/heads/release/')
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      packages: write
+  jobs:
+    release:
+      if: startsWith(github.ref, 'refs/heads/release/')
+      runs-on: ubuntu-latest
+      permissions:
+        contents: write
+        packages: write
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          persist-credentials: true
+      steps:
+        - name: Checkout repository
+          uses: actions/checkout@v6
+          with:
+            fetch-depth: 0
+            persist-credentials: true
 
-      - name: Extract branch and version
-        id: vars
-        run: |
-          BRANCH=${GITHUB_REF#refs/heads/}
-          VERSION=${BRANCH#release/}
-          VERSION=${VERSION#v}
-          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+        - name: Extract branch and version
+          id: vars
+          run: |
+            BRANCH=${GITHUB_REF#refs/heads/}
+            VERSION=${BRANCH#release/}
+            VERSION=${VERSION#v}
+            echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Create annotated tag and push
-        env:
-          REPO: ${{ github.repository }}
-        run: |
-          TAG="v${{ steps.vars.outputs.version }}"
-          git config user.name "${{ github.actor }}"
-          git config user.email "${{ github.actor }}@users.noreply.github.com"
-          # If tag exists skip, otherwise create and push
-          if git rev-parse "$TAG" >/dev/null 2>&1; then
-            echo "Tag $TAG already exists, skipping creation."
-          else
-            git tag -a "$TAG" -m "Release $TAG"
-            git push "https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${REPO}.git" "$TAG"
-          fi
+        - name: Create annotated tag and push
+          env:
+            REPO: ${{ github.repository }}
+          run: |
+            TAG="v${{ steps.vars.outputs.version }}"
+            git config user.name "${{ github.actor }}"
+            git config user.email "${{ github.actor }}@users.noreply.github.com"
+            if git rev-parse "$TAG" >/dev/null 2>&1; then
+              echo "Tag $TAG already exists, skipping creation."
+            else
+              git tag -a "$TAG" -m "Release $TAG"
+              git push "https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${REPO}.git" "$TAG"
+            fi
 
-      - name: Create GitHub release
-        uses: actions/create-release@v1
-        with:
-          tag_name: v${{ steps.vars.outputs.version }}
-          release_name: Release v${{ steps.vars.outputs.version }}
-          body: |
-            Release automatisch erstellt von Branch `${{ steps.vars.outputs.branch }}`.
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        - name: Log in to GitHub Container Registry
+          uses: docker/login-action@v2
+          with:
+            registry: ghcr.io
+            username: ${{ github.actor }}
+            password: ${{ secrets.GITHUB_TOKEN }}
+
+        - name: Build and push Docker image to GHCR
+          uses: docker/build-push-action@v4
+          with:
+            context: .
+            push: true
+            tags: |
+              ghcr.io/${{ github.repository }}:v${{ steps.vars.outputs.version }}
+
+        - name: Create GitHub release
+          uses: actions/create-release@v1
+          with:
+            tag_name: v${{ steps.vars.outputs.version }}
+            release_name: Release v${{ steps.vars.outputs.version }}
+            body: |
+              Release automatisch erstellt von Branch `${{ steps.vars.outputs.branch }}`.
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
