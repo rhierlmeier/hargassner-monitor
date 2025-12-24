@@ -14,15 +14,18 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
+      - name: Clean cache directory
+        run: rm -rf $HOME/.cache/go-build/* $HOME/go/pkg/mod/*      
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          token: ${{ secrets.MY_PERSONAL_TOKEN }}    
 
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v6
         with:
-          go-version: '1.21'
+          go-version: '1.25' # optional: anpassen an go.mod
 
       - name: Run tests
         run: go test ./...
