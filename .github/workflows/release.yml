@@ -20,7 +20,8 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
-          token: ${{ secrets.MY_PERSONAL_TOKEN }}    
+          token: ${{ secrets.GITHUB_TOKEN }}     # ensure checkout uses the workflow token
+          persist-credentials: true              # default true, but explicit helps readability
 
       - name: Set up Go
         uses: actions/setup-go@v6
