@@ -320,7 +320,19 @@ func registerStatusField[T any](field *StatusField[T], node *homie.Node) {
 	field.HomieProperty = node.AddProperty(field.Id, field.Name.EN, propertyType).SetUnit(field.Unit)
 }
 
+var (
+	version = "dev"
+	commit  = "unknown"
+	build   = "unknown"
+)
+
 func main() {
+
+	if len(os.Args) > 1 && os.Args[1] == "version" {
+		fmt.Printf("Version: %s (build %s, commit %s) \n", version, build, commit)
+		return
+	}
+
 	serialDevice := getEnv("HARGASSNER_SERIAL_DEVICE", "/dev/ttyUSB0")
 
 	mode := &serial.Mode{

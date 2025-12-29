@@ -81,6 +81,10 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
+          build-args: |
+            APP_VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
+            COMMIT_ID=${{ github.sha }}
+            BUILD_ID=${{ github.run_id }}
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
