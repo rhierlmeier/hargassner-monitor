@@ -10,8 +10,13 @@ COPY . .
 # Add the missing module and download all dependencies. Dependencies will be cached if the go.mod and go.sum files are not changed
 RUN go mod download
 
+ARG APP_VERSION=latest
+ENV ENV_APP_VERSION=${APP_VERSION}
+ARG COMMIT_ID=UNKNOWN
+ENV ENV_COMMIT_ID=${COMMIT_ID}
+
 # Build the Go app
-RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o build/hargassner-monitor main.go
+RUN CGO_ENABLED=0 go build -ldflags="-s -w -X main.version=$ENV_APP_VERSION -X main.commit=$ENV_COMMIT_ID" -o build/hargassner-monitor main.go
 # Run tests
 RUN go test ./...
 
