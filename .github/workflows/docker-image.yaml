@@ -44,6 +44,11 @@ jobs:
         run: |
           go test ./...
 
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        if: github.ref_type == 'tag'
+
+
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v5
