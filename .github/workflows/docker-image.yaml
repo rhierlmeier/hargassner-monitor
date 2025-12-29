@@ -82,7 +82,7 @@ jobs:
         with:
           context: .
           build-args: |
-            APP_VERSION=${{ github.ref_name }}
+            APP_VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
             COMMIT_ID=${{ github.sha }}
             BUILD_ID=${{ github.run_id }}
           push: ${{ github.event_name != 'pull_request' }}
