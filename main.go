@@ -333,6 +333,8 @@ func main() {
 		return
 	}
 
+	log.Printf("Starting hargassner-monitor version %s (build %s, commit %s)", version, build, commit)
+
 	serialDevice := getEnv("HARGASSNER_SERIAL_DEVICE", "/dev/ttyUSB0")
 
 	mode := &serial.Mode{
