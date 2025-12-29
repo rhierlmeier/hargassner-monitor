@@ -14,9 +14,11 @@ ARG APP_VERSION=latest
 ENV ENV_APP_VERSION=${APP_VERSION}
 ARG COMMIT_ID=UNKNOWN
 ENV ENV_COMMIT_ID=${COMMIT_ID}
+ARG BUILD_ID=UNKNOWN
+ENV ENV_BUILD_ID=$BUILD_ID
 
 # Build the Go app
-RUN CGO_ENABLED=0 go build -ldflags="-s -w -X main.version=$ENV_APP_VERSION -X main.commit=$ENV_COMMIT_ID" -o build/hargassner-monitor main.go
+RUN CGO_ENABLED=0 go build -ldflags="-s -w -X main.version=$ENV_APP_VERSION -X main.commit=$ENV_COMMIT_ID -X main.build=$ENV_BUILD_ID" -o build/hargassner-monitor main.go
 # Run tests
 RUN go test ./...
 
