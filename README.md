@@ -1,13 +1,13 @@
-
 [![ci](https://github.com/rhierlmeier/hargassner-monitor/actions/workflows/docker-image.yaml/badge.svg)](https://github.com/rhierlmeier/hargassner-monitor/actions/workflows/docker-image.yaml)
 
 # Hargassner Monitor
-Hargassner Monitor is a Go application that reads and parses status records from a Hargassner HSV heating system via a serial connection. The application can be built and run locally or within a Docker container.
+Hargassner Monitor is a Go application that reads and parses status records from a Hargassner HSV heating system via a serial connection, and publishes them to MQTT for real-time monitoring. The application can be built and run locally or within a Docker container.
 
 ## Features
 
 - Reads status records from a serial device
 - Parses and displays status records
+- Publishes status records to MQTT for real-time monitoring
 - Multi-architecture Docker image support (amd64 and arm64)
 
 ## Prerequisites
@@ -23,7 +23,7 @@ Hargassner Monitor is a Go application that reads and parses status records from
 git clone https://github.com/rhierlmeier/hargassner-monitor.git
 cd hargassner-monitor
 ```
-Test
+
 ### Docker Images
 
 The project provides pre-built Docker images for different architectures. You can pull the appropriate image for your system from Docker Hub.
@@ -48,8 +48,8 @@ To run the Docker container from GHCR:
 
 ```sh
 docker run --rm \
-    -e HARGASSNER_SERIAL_PORT=
-    -e HARGASSNER_MQTT_BROKER=tcp://mqtt.local
+    -e HARGASSNER_SERIAL_PORT=/dev/ttyUSB0 \
+    -e HARGASSNER_MQTT_BROKER=tcp://mqtt.local \
     ghcr.io/rhierlmeier/hargassner-monitor:latest
 ```
 
@@ -64,8 +64,19 @@ The application uses the following environment variables:
 - `HARGASSNER_MQTT_CLIENT_ID`: Specifies the MQTT client ID. Default is `hargassner-monitor`.
 - `HARGASSNER_MQTT_USERNAME`: Specifies the username for MQTT broker authentication. Default is empty.
 - `HARGASSNER_MQTT_PASSWORD`: Specifies the password for MQTT broker authentication. Default is empty.
-- `HARGASSNER_MONITOR_PORT`: Port where the HTTP server first status request is listing
+- `HARGASSNER_MONITOR_PORT`: Port where the HTTP server first status request is listening. Default is `8080`.
 
+## MQTT Integration
+
+The application publishes status records from the Hargassner heating system to an MQTT broker in real-time. This enables seamless integration with home automation systems and allows multiple clients to subscribe to the heating system's status.
+
+### Publishing Workflow
+
+1. **Data Acquisition**: The application reads status records from the heating system via the serial port at regular intervals.
+2. **Data Parsing**: Status records are parsed and converted to structured data.
+3. **MQTT Publishing**: The parsed data is published to the MQTT broker under specific topics following the MQTT Homie specification.
+4. **Real-time Updates**: Clients subscribed to these topics receive real-time updates whenever the heating system status changes.
+5. **Home Automation Integration**: Home automation systems can subscribe to these topics and trigger actions based on the heating system's state.
 
 ## MQTT Homie Devices, Nodes, and Properties
 
