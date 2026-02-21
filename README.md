@@ -129,6 +129,20 @@ The application publishes the status values of the Hargassner heating system. It
 | `vorlaufTemperatur`     | Vorlauftemperatur          | float    | °C       |
 | `vorlaufSollTemperatur` | Vorlauf Solltemperatur     | float    | °C       |
 
+#### Kessel
+
+- **ID**: `kessel`
+- **Name**: `Kessel`
+- **Type**: `Kessel`
+
+##### Properties
+
+| **ID**                        | **Name**                    | **Type** | **Unit** |
+|-------------------------------|-----------------------------|----------|----------|
+| `DauerLetzteZuendung`         | Dauer letzte Zündung        | integer  | s        |
+| `DauerLetzterLeistungsbrand` | Dauer letzter Leistungsbrand | integer  | s        |
+| `AnzahlZuendungen`            | Anzahl Zündungen            | integer  |          |
+
 #### Störung
 
 - **ID**: `stoerung`
