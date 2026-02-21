@@ -30,3 +30,5 @@ vendor/
 
 # Docker specific files
 docker-compose.override.yml
+/hargassner-monitor
+/hargassner-monitor-arm64
