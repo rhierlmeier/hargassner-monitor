@@ -7,8 +7,10 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/creativeprojects/go-homie"
@@ -436,39 +438,69 @@ func main() {
 	log.Printf("Reading from on %s", serialDevice)
 	reader := bufio.NewReader(port)
 
-	reader.ReadString('\n')
+	// handle signals for graceful shutdown
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
-	for {
-		line, err := reader.ReadString('\n')
-		if err != nil {
-			log.Fatal(err)
-		}
+	done := make(chan bool, 1)
 
-		line, err = strconv.Unquote(strings.Replace(strconv.Quote(line), `\\x`, `\x`, -1))
-		if err != nil {
-			log.Fatal(err)
-		}
+	go func() {
+		reader.ReadString('\n')
 
-		fields := strings.Fields(strings.TrimSpace(line))
-
-		//log.Printf("Received fields: %s", strings.Join(fields, "|"))
-
-		switch fields[0] {
-		case "pm":
-			err := parseStatusRecord(fields, statusRecord)
+		for {
+			line, err := reader.ReadString('\n')
 			if err != nil {
-				log.Println("Error parsing status record:", err)
+				if err.Error() != "Port has been closed" {
+					log.Printf("error reading from serial: %v", err)
+				}
+				done <- true
+				return
+			}
+
+			line, err = strconv.Unquote(strings.Replace(strconv.Quote(line), `\\x`, `\x`, -1))
+			if err != nil {
+				log.Printf("error unquoting line: %v", err)
 				continue
 			}
-		case "z":
-			{
-				handleZRecord(fields, line)
+
+			fields := strings.Fields(strings.TrimSpace(line))
+
+			//log.Printf("Received fields: %s", strings.Join(fields, "|"))
+
+			if len(fields) > 0 {
+				switch fields[0] {
+				case "pm":
+					err := parseStatusRecord(fields, statusRecord)
+					if err != nil {
+						log.Println("Error parsing status record:", err)
+						continue
+					}
+				case "z":
+					{
+						handleZRecord(fields, line)
+					}
+				default:
+					fmt.Print("Unknown record receive:" + line)
+				}
 			}
-		default:
-			fmt.Print("Unknown record receive:" + line)
 		}
+	}()
+
+	select {
+	case <-sigs:
+		log.Println("Received signal, shutting down...")
+	case <-done:
+		log.Println("Serial reader finished, shutting down...")
 	}
 
+	if mqttClient != nil && mqttClient.IsConnected() {
+		log.Println("Setting Homie state to disconnected")
+		homieDevice.SetState(homie.StateDisconnected)
+		publishAllHomieAttributes()
+		mqttClient.Disconnect(250)
+	}
+	port.Close()
+	log.Println("Shutdown complete")
 }
 
 func handleZRecord(fields []string, line string) {
