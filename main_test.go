@@ -1,10 +1,40 @@
 package main
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
+
+func TestMetricsEndpoint(t *testing.T) {
+	// Re-register or use existing handlers if possible
+	// Since main uses http.Handle on default mux, we might have issues if already registered.
+	// But in test we can create a new mux.
+	mux := http.NewServeMux()
+	mux.Handle("/metrics", promhttp.Handler())
+
+	req, err := http.NewRequest("GET", "/metrics", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusOK)
+	}
+
+	// Check if it contains some prometheus default metrics at least
+	if !strings.Contains(rr.Body.String(), "go_info") {
+		t.Errorf("handler returned unexpected body: %v", rr.Body.String())
+	}
+}
 
 func TestGetStoerungText_KnownAndUnknown(t *testing.T) {
 	known := getStoerungText(1)

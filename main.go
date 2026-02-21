@@ -15,6 +15,8 @@ import (
 
 	"github.com/creativeprojects/go-homie"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.bug.st/serial"
 )
 
@@ -42,7 +44,7 @@ func newMeldung(node *homie.Node) StatusField[string] {
 		Name: MultiLanguageString{EN: "Message", DE: "Meldung"},
 		Unit: "",
 	}
-	registerStatusField(&ret, node)
+	registerStatusField(&ret, node, "prozesswerte")
 	return ret
 }
 
@@ -52,6 +54,7 @@ type StatusField[T any] struct {
 	Name          MultiLanguageString
 	Unit          string
 	HomieProperty *homie.Property
+	PromGauge     prometheus.Gauge
 }
 
 type StatusRecord struct {
@@ -103,9 +106,9 @@ func newEmptyKesselRecord(node *homie.Node) *KesselRecord {
 		AnzahlZuendungen:           StatusField[int]{Id: "AnzahlZuendungen", Name: MultiLanguageString{EN: "Number of Ignitions", DE: "Anzahl Zündungen"}, Unit: ""},
 	}
 
-	registerStatusField(&ret.DauerLetzteZuendung, node)
-	registerStatusField(&ret.DauerLetzterLeistungsbrand, node)
-	registerStatusField(&ret.AnzahlZuendungen, node)
+	registerStatusField(&ret.DauerLetzteZuendung, node, "kessel")
+	registerStatusField(&ret.DauerLetzterLeistungsbrand, node, "kessel")
+	registerStatusField(&ret.AnzahlZuendungen, node, "kessel")
 
 	return ret
 }
@@ -118,10 +121,10 @@ func newEmptyStoerungRecord(node *homie.Node) *StoerungRecord {
 		LastActive:     StatusField[string]{Id: "lastActive", Name: MultiLanguageString{EN: "Last Active", DE: "Letzte Aktivität"}, Unit: ""},
 	}
 
-	registerStatusField(&ret.StoerungNr, node)
-	registerStatusField(&ret.StoerungText, node)
-	registerStatusField(&ret.StoerungActive, node)
-	registerStatusField(&ret.LastActive, node)
+	registerStatusField(&ret.StoerungNr, node, "stoerung")
+	registerStatusField(&ret.StoerungText, node, "stoerung")
+	registerStatusField(&ret.StoerungActive, node, "stoerung")
+	registerStatusField(&ret.LastActive, node, "stoerung")
 
 	return ret
 }
@@ -130,6 +133,20 @@ func (field *StatusField[T]) SetValue(value T) {
 	field.Value = value
 	if field.HomieProperty != nil {
 		field.HomieProperty.Set(value)
+	}
+	if field.PromGauge != nil {
+		switch v := any(value).(type) {
+		case int:
+			field.PromGauge.Set(float64(v))
+		case float64:
+			field.PromGauge.Set(v)
+		case bool:
+			if v {
+				field.PromGauge.Set(1)
+			} else {
+				field.PromGauge.Set(0)
+			}
+		}
 	}
 }
 
@@ -328,7 +345,7 @@ func getStoerungText(stoerNr int) string {
 	return text
 }
 
-func registerStatusField[T any](field *StatusField[T], node *homie.Node) {
+func registerStatusField[T any](field *StatusField[T], node *homie.Node, nodeName string) {
 
 	var propertyType homie.PropertyType
 
@@ -345,6 +362,19 @@ func registerStatusField[T any](field *StatusField[T], node *homie.Node) {
 		log.Fatalf("unsupported type of field %s", field.Id)
 	}
 	field.HomieProperty = node.AddProperty(field.Id, field.Name.EN, propertyType).SetUnit(field.Unit)
+
+	if propertyType != homie.TypeString {
+		name := "hargassner_" + nodeName + "_" + strings.ReplaceAll(field.Id, "-", "_")
+		gauge := prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: name,
+			Help: field.Name.DE,
+		})
+		if err := prometheus.Register(gauge); err != nil {
+			log.Printf("could not register prometheus gauge for %s (%s): %v", field.Id, name, err)
+		} else {
+			field.PromGauge = gauge
+		}
+	}
 }
 
 var (
@@ -378,38 +408,47 @@ func main() {
 
 	statusRecord := newEmptyStatusRecord()
 
-	registerStatusField(&statusRecord.PrimaryAirFan, nodeProcessWerte)
-	registerStatusField(&statusRecord.ExhaustFan, nodeProcessWerte)
-	registerStatusField(&statusRecord.O2InExhaustGas, nodeProcessWerte)
-	registerStatusField(&statusRecord.BoilerTemperature, nodeProcessWerte)
-	registerStatusField(&statusRecord.ExhaustGasTemperature, nodeProcessWerte)
-	registerStatusField(&statusRecord.CurrentOutdoorTemperature, nodeProcessWerte)
-	registerStatusField(&statusRecord.AverageOutdoorTemperature, nodeProcessWerte)
-	registerStatusField(&statusRecord.FlowTemperatureCircuit1, nodeHeizkreis1)
-	registerStatusField(&statusRecord.FlowTemperatureCircuit2, nodeHeizkreis2)
-	registerStatusField(&statusRecord.FlowTemperatureCircuit1Set, nodeHeizkreis1)
-	registerStatusField(&statusRecord.FlowTemperatureCircuit2Set, nodeHeizkreis2)
-	registerStatusField(&statusRecord.ReturnBoiler2BufferTemp, nodeProcessWerte)
-	registerStatusField(&statusRecord.BoilerTemperature1, nodeProcessWerte)
-	registerStatusField(&statusRecord.FeedRate, nodeProcessWerte)
-	registerStatusField(&statusRecord.BoilerSetTemperature, nodeProcessWerte)
-	registerStatusField(&statusRecord.CurrentUnderpressure, nodeProcessWerte)
-	registerStatusField(&statusRecord.AverageUnderpressure, nodeProcessWerte)
-	registerStatusField(&statusRecord.SetUnderpressure, nodeProcessWerte)
-	registerStatusField(&statusRecord.BoilerTemperature2SM, nodeProcessWerte)
-	registerStatusField(&statusRecord.HK1FR25, nodeHeizkreis1)
-	registerStatusField(&statusRecord.HK2FR25, nodeHeizkreis2)
-	registerStatusField(&statusRecord.MotorCurrentFeedScrew, nodeProcessWerte)
-	registerStatusField(&statusRecord.MotorCurrentAshDischarge, nodeProcessWerte)
-	registerStatusField(&statusRecord.MotorCurrentRoomDischarge, nodeProcessWerte)
-	registerStatusField(&statusRecord.MotorCurrentRoomDischarge, nodeProcessWerte)
+	registerStatusField(&statusRecord.PrimaryAirFan, nodeProcessWerte, "prozesswerte")
+	registerStatusField(&statusRecord.ExhaustFan, nodeProcessWerte, "prozesswerte")
+	registerStatusField(&statusRecord.O2InExhaustGas, nodeProcessWerte, "prozesswerte")
+	registerStatusField(&statusRecord.BoilerTemperature, nodeProcessWerte, "prozesswerte")
+	registerStatusField(&statusRecord.ExhaustGasTemperature, nodeProcessWerte, "prozesswerte")
+	registerStatusField(&statusRecord.CurrentOutdoorTemperature, nodeProcessWerte, "prozesswerte")
+	registerStatusField(&statusRecord.AverageOutdoorTemperature, nodeProcessWerte, "prozesswerte")
+	registerStatusField(&statusRecord.FlowTemperatureCircuit1, nodeHeizkreis1, "heizkreis1")
+	registerStatusField(&statusRecord.FlowTemperatureCircuit2, nodeHeizkreis2, "heizkreis2")
+	registerStatusField(&statusRecord.FlowTemperatureCircuit1Set, nodeHeizkreis1, "heizkreis1")
+	registerStatusField(&statusRecord.FlowTemperatureCircuit2Set, nodeHeizkreis2, "heizkreis2")
+	registerStatusField(&statusRecord.ReturnBoiler2BufferTemp, nodeProcessWerte, "prozesswerte")
+	registerStatusField(&statusRecord.BoilerTemperature1, nodeProcessWerte, "prozesswerte")
+	registerStatusField(&statusRecord.FeedRate, nodeProcessWerte, "prozesswerte")
+	registerStatusField(&statusRecord.BoilerSetTemperature, nodeProcessWerte, "prozesswerte")
+	registerStatusField(&statusRecord.CurrentUnderpressure, nodeProcessWerte, "prozesswerte")
+	registerStatusField(&statusRecord.AverageUnderpressure, nodeProcessWerte, "prozesswerte")
+	registerStatusField(&statusRecord.SetUnderpressure, nodeProcessWerte, "prozesswerte")
+	registerStatusField(&statusRecord.BoilerTemperature2SM, nodeProcessWerte, "prozesswerte")
+	registerStatusField(&statusRecord.HK1FR25, nodeHeizkreis1, "heizkreis1")
+	registerStatusField(&statusRecord.HK2FR25, nodeHeizkreis2, "heizkreis2")
+	registerStatusField(&statusRecord.MotorCurrentFeedScrew, nodeProcessWerte, "prozesswerte")
+	registerStatusField(&statusRecord.MotorCurrentAshDischarge, nodeProcessWerte, "prozesswerte")
+	registerStatusField(&statusRecord.MotorCurrentRoomDischarge, nodeProcessWerte, "prozesswerte")
 
 	homieDevice.OnSet(onSet)
 
 	httpPort := getEnv("HARGASSNER_MONITOR_PORT", "8080")
 
-	http.HandleFunc("/readiness", readinessProbe)
-	http.HandleFunc("/stoerung", handleStoerung)
+	log.Printf("HTTP service is listening on port %s", httpPort)
+
+	readinessEndpoint := "/readiness"
+	http.HandleFunc(readinessEndpoint, readinessProbe)
+	log.Printf("Readiness endpoint is %s", readinessEndpoint)
+
+	stoerungEndpoint := "/stoerung"
+	http.HandleFunc(stoerungEndpoint, handleStoerung)
+	log.Printf("Stoerung endpoint is %s", stoerungEndpoint)
+	metricsEndpoint := "/metrics"
+	http.Handle(metricsEndpoint, promhttp.Handler())
+	log.Printf("Metrics endpoint is %s", metricsEndpoint)
 
 	go func() {
 		log.Fatal(http.ListenAndServe(":"+httpPort, nil))
