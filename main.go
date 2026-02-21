@@ -285,6 +285,7 @@ func onConnectionLost(client mqtt.Client, err error) {
 func onConnected(client mqtt.Client) {
 	log.Printf("Connected to MQTT broker")
 	publishAllHomieAttributes()
+	homieDevice.SetState(homie.StateReady)
 }
 
 func publishAllHomieAttributes() {
