@@ -22,8 +22,10 @@ var nodeProcessWerte = homieDevice.AddNode("prozesswerte", "Prozesswerte", "Proz
 var nodeHeizkreis1 = homieDevice.AddNode("heizkreis1", "Heizkreis 1", "Heizkreis 1")
 var nodeHeizkreis2 = homieDevice.AddNode("heizkreis2", "Heizkreis 2", "Heizkreis 2")
 var nodeStoerung = homieDevice.AddNode("stoerung", "Störung", "Störung")
+var nodeKessel = homieDevice.AddNode("kessel", "Kessel", "Kessel")
 
 var stoerungRecord = newEmptyStoerungRecord(nodeStoerung)
+var kesselRecord = newEmptyKesselRecord(nodeKessel)
 
 var meldung = newMeldung(nodeProcessWerte)
 
@@ -82,6 +84,28 @@ type StoerungRecord struct {
 	StoerungText   StatusField[string]
 	StoerungActive StatusField[bool]
 	LastActive     StatusField[string]
+}
+
+type KesselRecord struct {
+	DauerLetzteZuendung        StatusField[int]
+	DauerLetzterLeistungsbrand StatusField[int]
+	AnzahlZuendungen           StatusField[int]
+	lastZuendungStart          time.Time
+	lastLeistungsbrandStart    time.Time
+}
+
+func newEmptyKesselRecord(node *homie.Node) *KesselRecord {
+	ret := &KesselRecord{
+		DauerLetzteZuendung:        StatusField[int]{Id: "DauerLetzteZuendung", Name: MultiLanguageString{EN: "Duration Last Ignition", DE: "Dauer letzte Zündung"}, Unit: "s"},
+		DauerLetzterLeistungsbrand: StatusField[int]{Id: "DauerLetzterLeistungsbrand", Name: MultiLanguageString{EN: "Duration Last Power Fire", DE: "Dauer letzter Leistungsbrand"}, Unit: "s"},
+		AnzahlZuendungen:           StatusField[int]{Id: "AnzahlZuendungen", Name: MultiLanguageString{EN: "Number of Ignitions", DE: "Anzahl Zündungen"}, Unit: ""},
+	}
+
+	registerStatusField(&ret.DauerLetzteZuendung, node)
+	registerStatusField(&ret.DauerLetzterLeistungsbrand, node)
+	registerStatusField(&ret.AnzahlZuendungen, node)
+
+	return ret
 }
 
 func newEmptyStoerungRecord(node *homie.Node) *StoerungRecord {
@@ -449,6 +473,43 @@ func main() {
 func handleZRecord(fields []string, line string) {
 
 	log.Printf("Handling Z record: fields:[%s]", strings.Join(fields, "|"))
+
+	if fields[2] == "Kessel" && len(fields) >= 4 {
+		timestamp, err := time.Parse("15:04:05", fields[1])
+		if err == nil {
+			field3 := fields[3]
+			isZuendung := strings.HasPrefix(field3, "Z") && strings.HasSuffix(field3, "ndung")
+			if !isZuendung && strings.HasPrefix(field3, "Z") && (strings.HasSuffix(field3, "ndungen") || strings.Contains(field3, "ndung")) {
+				isZuendung = true
+			}
+
+			switch {
+			case isZuendung:
+				if len(fields) >= 4 {
+					// "z|14:10:40|Kessel|Zündung" -> Start der Zündung
+					kesselRecord.lastZuendungStart = timestamp
+					kesselRecord.AnzahlZuendungen.SetValue(kesselRecord.AnzahlZuendungen.Value + 1)
+				}
+			case field3 == "Leistungsbrand":
+				// "z|14:20:20|Kessel|Leistungsbrand" -> Beginn Leistungsbrand
+				// Zündung endet hier
+				if !kesselRecord.lastZuendungStart.IsZero() {
+					duration := timestamp.Sub(kesselRecord.lastZuendungStart)
+					kesselRecord.DauerLetzteZuendung.SetValue(int(duration.Seconds()))
+					kesselRecord.lastZuendungStart = time.Time{} // Reset
+				}
+				kesselRecord.lastLeistungsbrandStart = timestamp
+			case field3 == "Aus":
+				// "z|18:00:32|Kessel|Aus" -> Leistungsbrand endet
+				if !kesselRecord.lastLeistungsbrandStart.IsZero() {
+					duration := timestamp.Sub(kesselRecord.lastLeistungsbrandStart)
+					kesselRecord.DauerLetzterLeistungsbrand.SetValue(int(duration.Seconds()))
+					kesselRecord.lastLeistungsbrandStart = time.Time{} // Reset
+				}
+			}
+		}
+	}
+
 	isStoerung := strings.HasPrefix(fields[2], "St") && strings.HasSuffix(fields[2], "rung")
 	if isStoerung {
 		// 0.1........2........3...4.5

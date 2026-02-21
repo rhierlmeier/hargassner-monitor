@@ -54,6 +54,59 @@ func TestHandleZRecord_SetAndQuit(t *testing.T) {
 	}
 }
 
+func TestHandleZRecord_Duration(t *testing.T) {
+	// 026/02/14 13:21:44 Handling Z record: fields:[z|14:10:40|Kessel|Zündung] <-- Hier beginnt die Zündung
+	// 2026/02/14 13:31:25 Handling Z record: fields:[z|14:20:20|Kessel|Leistungsbrand] <-- Hier beginnt der Leistungsbrand
+	// 2026/02/14 17:11:37 Handling Z record: fields:[z|18:00:32|Kessel|Aus] <-- Leistungsbrand endet
+
+	kesselRecord = newEmptyKesselRecord(nodeKessel)
+
+	// Start Zündung
+	handleZRecord([]string{"z", "14:10:40", "Kessel", "Zündung"}, "z 14:10:40 Kessel Zündung")
+	if kesselRecord.AnzahlZuendungen.Value != 1 {
+		t.Fatalf("expected AnzahlZuendungen 1, got %d", kesselRecord.AnzahlZuendungen.Value)
+	}
+
+	// Start Leistungsbrand (Zündung endet)
+	// 14:10:40 bis 14:20:20 sind 9 Minuten und 40 Sekunden = 540 + 40 = 580 Sekunden
+	handleZRecord([]string{"z", "14:20:20", "Kessel", "Leistungsbrand"}, "z 14:20:20 Kessel Leistungsbrand")
+	if kesselRecord.DauerLetzteZuendung.Value != 580 {
+		t.Fatalf("expected DauerLetzteZuendung 580, got %d", kesselRecord.DauerLetzteZuendung.Value)
+	}
+
+	// Test mit anderer Kodierung/Schreibweise, die durch Z.*ndung abgedeckt sein sollte
+	handleZRecord([]string{"z", "14:30:00", "Kessel", "Zündungen"}, "z 14:30:00 Kessel Zündungen")
+	if kesselRecord.AnzahlZuendungen.Value != 2 {
+		t.Fatalf("expected AnzahlZuendungen 2 after Zündungen, got %d", kesselRecord.AnzahlZuendungen.Value)
+	}
+	handleZRecord([]string{"z", "14:35:00", "Kessel", "Leistungsbrand"}, "z 14:35:00 Kessel Leistungsbrand")
+	// 14:30:00 bis 14:35:00 sind 5 Minuten = 300 Sekunden
+	if kesselRecord.DauerLetzteZuendung.Value != 300 {
+		t.Fatalf("expected DauerLetzteZuendung 300, got %d", kesselRecord.DauerLetzteZuendung.Value)
+	}
+
+	// Noch ein Test für Zndung
+	handleZRecord([]string{"z", "14:40:00", "Kessel", "Zndung"}, "z 14:40:00 Kessel Zndung")
+	if kesselRecord.AnzahlZuendungen.Value != 3 {
+		t.Fatalf("expected AnzahlZuendungen 3 after Zndung, got %d", kesselRecord.AnzahlZuendungen.Value)
+	}
+	handleZRecord([]string{"z", "14:45:00", "Kessel", "Leistungsbrand"}, "z 14:45:00 Kessel Leistungsbrand")
+	if kesselRecord.DauerLetzteZuendung.Value != 300 {
+		t.Fatalf("expected DauerLetzteZuendung 300 (second time), got %d", kesselRecord.DauerLetzteZuendung.Value)
+	}
+
+	// Ende Leistungsbrand
+	// Von 14:45:00 bis 18:00:32
+	// 14:45:00 -> 17:45:00 sind 3 Stunden = 10800s
+	// 17:45:00 -> 18:00:00 sind 15 Minuten = 900s
+	// 18:00:00 -> 18:00:32 sind 32s
+	// Gesamt: 10800 + 900 + 32 = 11732
+	handleZRecord([]string{"z", "18:00:32", "Kessel", "Aus"}, "z 18:00:32 Kessel Aus")
+	if kesselRecord.DauerLetzterLeistungsbrand.Value != 11732 {
+		t.Fatalf("expected DauerLetzterLeistungsbrand 11732, got %d", kesselRecord.DauerLetzterLeistungsbrand.Value)
+	}
+}
+
 // Optional helper to ensure strconv.Atoi behavior for padded numbers (ensures test expectations)
 func TestAtoiPadded(t *testing.T) {
 	v, err := strconv.Atoi("0007")
