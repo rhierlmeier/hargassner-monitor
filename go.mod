@@ -2,7 +2,7 @@ module rhierlmeier/hargassner-monitor
 
 go 1.26.0
 
-require go.bug.st/serial v1.7.1
+require go.bug.st/serial v1.8.0
 
 require (
 	github.com/creativeprojects/go-homie v0.2.0
