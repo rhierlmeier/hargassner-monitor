@@ -28,7 +28,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v7
         with:
-          go-version: '1.26' # optional: anpassen an go.mod
+          go-version: '1.27' # optional: anpassen an go.mod
 
       - name: Cache Go modules and build cache
         uses: actions/cache@v6
