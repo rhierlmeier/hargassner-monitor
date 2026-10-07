@@ -65,6 +65,17 @@ The application uses the following environment variables:
 - `HARGASSNER_MQTT_USERNAME`: Specifies the username for MQTT broker authentication. Default is empty.
 - `HARGASSNER_MQTT_PASSWORD`: Specifies the password for MQTT broker authentication. Default is empty.
 - `HARGASSNER_MONITOR_PORT`: Port where the HTTP server first status request is listing
+- `HARGASSNER_MAX_DATA_AGE`: Maximum time without data from the serial port before `/readiness` reports not ready, as a Go duration (e.g. `5m`). Default is `5m`.
+
+## Readiness
+
+`GET /readiness` returns 200 if the MQTT client is connected and a line was
+read from the serial port within `HARGASSNER_MAX_DATA_AGE`. Otherwise it
+returns 503 with the reasons. A silent serial port (controller switched off,
+cable loose while the USB adapter is still present) causes no read error, so
+it is only detected this way. After a start, the monitor allows
+`HARGASSNER_MAX_DATA_AGE` for the first data. Use the endpoint as a readiness
+probe; a restart does not fix a silent controller.
 
 
 ## MQTT Homie Devices, Nodes, and Properties
