@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -145,5 +146,41 @@ func TestAtoiPadded(t *testing.T) {
 	}
 	if v != 7 {
 		t.Fatalf("Atoi expected 7, got %d", v)
+	}
+}
+
+func TestReadinessProblems(t *testing.T) {
+	start := time.Date(2026, 10, 7, 12, 0, 0, 0, time.UTC)
+	oldMax := maxDataAge
+	maxDataAge = 5 * time.Minute
+	t.Cleanup(func() { maxDataAge = oldMax })
+	lastSerialData.Store(start.UnixNano())
+
+	if p := readinessProblems(start.Add(5*time.Minute), true); len(p) != 0 {
+		t.Errorf("within max data age: %v", p)
+	}
+
+	p := readinessProblems(start.Add(6*time.Minute), true)
+	if len(p) != 1 || !strings.Contains(p[0], "no data from serial port for 6m0s") {
+		t.Errorf("stale data: %v", p)
+	}
+
+	p = readinessProblems(start.Add(time.Minute), false)
+	if len(p) != 1 || p[0] != "mqtt not connected" {
+		t.Errorf("mqtt disconnected: %v", p)
+	}
+
+	if p := readinessProblems(start.Add(10*time.Minute), false); len(p) != 2 {
+		t.Errorf("both problems expected: %v", p)
+	}
+}
+
+func TestReadinessProbeHandler(t *testing.T) {
+	// mqttClient is nil in tests, so the probe must report not ready.
+	lastSerialData.Store(time.Now().UnixNano())
+	rr := httptest.NewRecorder()
+	readinessProbe(rr, httptest.NewRequest("GET", "/readiness", nil))
+	if rr.Code != http.StatusServiceUnavailable || !strings.Contains(rr.Body.String(), "mqtt not connected") {
+		t.Errorf("got %d %q", rr.Code, rr.Body.String())
 	}
 }

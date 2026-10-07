@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -180,7 +181,36 @@ func newEmptyStatusRecord() *StatusRecord {
 
 }
 
+// lastSerialData is the time of the last line read from the serial port in
+// Unix nanoseconds. It starts at the start time, which grants maxDataAge for
+// the first line.
+var lastSerialData atomic.Int64
+
+// maxDataAge is the time without serial data after which the monitor is not
+// ready (HARGASSNER_MAX_DATA_AGE).
+var maxDataAge = 5 * time.Minute
+
+// readinessProblems returns why the monitor is not ready, or nil. A blocked
+// serial read (controller off, cable loose while the USB adapter is still
+// present) causes no error, so it is detected by the age of the last data.
+func readinessProblems(now time.Time, mqttConnected bool) []string {
+	var problems []string
+	if !mqttConnected {
+		problems = append(problems, "mqtt not connected")
+	}
+	age := now.Sub(time.Unix(0, lastSerialData.Load()))
+	if age > maxDataAge {
+		problems = append(problems, fmt.Sprintf("no data from serial port for %s (max %s)", age.Round(time.Second), maxDataAge))
+	}
+	return problems
+}
+
 func readinessProbe(w http.ResponseWriter, r *http.Request) {
+	problems := readinessProblems(time.Now(), mqttClient != nil && mqttClient.IsConnectionOpen())
+	if len(problems) > 0 {
+		http.Error(w, strings.Join(problems, "\n"), http.StatusServiceUnavailable)
+		return
+	}
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("Service is ready"))
 }
@@ -303,8 +333,10 @@ func onConnectionLost(client mqtt.Client, err error) {
 
 func onConnected(client mqtt.Client) {
 	log.Printf("Connected to MQTT broker")
-	publishAllHomieAttributes()
+	// Set the state before publishing: SetState itself publishes without the
+	// retain flag, so only publishAllHomieAttributes stores it on the broker.
 	homieDevice.SetState(homie.StateReady)
+	publishAllHomieAttributes()
 }
 
 func publishAllHomieAttributes() {
@@ -394,6 +426,15 @@ func main() {
 
 	serialDevice := getEnv("HARGASSNER_SERIAL_DEVICE", "/dev/ttyUSB0")
 
+	if value := getEnv("HARGASSNER_MAX_DATA_AGE", ""); value != "" {
+		parsed, err := time.ParseDuration(value)
+		if err != nil || parsed <= 0 {
+			log.Fatalf("invalid HARGASSNER_MAX_DATA_AGE %q: must be a positive duration like 5m", value)
+		}
+		maxDataAge = parsed
+	}
+	lastSerialData.Store(time.Now().UnixNano())
+
 	mode := &serial.Mode{
 		BaudRate: 19200,
 		Parity:   serial.NoParity,
@@ -441,7 +482,7 @@ func main() {
 
 	readinessEndpoint := "/readiness"
 	http.HandleFunc(readinessEndpoint, readinessProbe)
-	log.Printf("Readiness endpoint is %s", readinessEndpoint)
+	log.Printf("Readiness endpoint is %s (max data age %s)", readinessEndpoint, maxDataAge)
 
 	stoerungEndpoint := "/stoerung"
 	http.HandleFunc(stoerungEndpoint, handleStoerung)
@@ -468,11 +509,10 @@ func main() {
 	log.Printf("Connecting to MQTT broker %s", opts.Servers[0])
 
 	mqttClient = mqtt.NewClient(opts)
+	// onConnected publishes the Homie attributes on every (re)connect.
 	if token := mqttClient.Connect(); token.Wait() && token.Error() != nil {
 		log.Fatal(token.Error())
 	}
-
-	publishAllHomieAttributes()
 
 	log.Printf("Reading from on %s", serialDevice)
 	reader := bufio.NewReader(port)
@@ -495,6 +535,7 @@ func main() {
 				done <- true
 				return
 			}
+			lastSerialData.Store(time.Now().UnixNano())
 
 			line, err = strconv.Unquote(strings.Replace(strconv.Quote(line), `\\x`, `\x`, -1))
 			if err != nil {
