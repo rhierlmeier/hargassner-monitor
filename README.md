@@ -48,8 +48,8 @@ To run the Docker container from GHCR:
 
 ```sh
 docker run --rm \
-    -e HARGASSNER_SERIAL_PORT=
-    -e HARGASSNER_MQTT_BROKER=tcp://mqtt.local
+    -e HARGASSNER_SERIAL_DEVICE=/dev/ttyUSB0 \
+    -e HARGASSNER_MQTT_BROKER=tcp://mqtt.local \
     ghcr.io/rhierlmeier/hargassner-monitor:latest
 ```
 
@@ -59,10 +59,10 @@ Replace `/dev/ttyUSB0` with the appropriate serial device on your system.
 
 The application uses the following environment variables:
 
-- `HARGASSNER_SERIAL_PORT`: Specifies the serial port to which the Hargassner heating system is connected. Default is `/dev/ttyUSB0`.
+- `HARGASSNER_SERIAL_DEVICE`: Specifies the serial device to which the Hargassner heating system is connected. Default is `/dev/ttyUSB0`.
 - `HARGASSNER_MQTT_BROKER`: Specifies the MQTT broker URL. Default is `tcp://localhost:1883`.
 - `HARGASSNER_MQTT_CLIENT_ID`: Specifies the MQTT client ID. Default is `hargassner-monitor`.
-- `HARGASSNER_MQTT_USERNAME`: Specifies the username for MQTT broker authentication. Default is empty.
+- `HARGASSNER_MQTT_USER`: Specifies the username for MQTT broker authentication. Default is empty.
 - `HARGASSNER_MQTT_PASSWORD`: Specifies the password for MQTT broker authentication. Default is empty.
 - `HARGASSNER_MONITOR_PORT`: Port where the HTTP server first status request is listing
 - `HARGASSNER_MAX_DATA_AGE`: Maximum time without data from the serial port before `/readiness` reports not ready, as a Go duration (e.g. `5m`). Default is `5m`.
