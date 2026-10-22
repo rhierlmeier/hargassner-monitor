@@ -23,7 +23,7 @@ RUN CGO_ENABLED=0 go build -ldflags="-s -w -X main.version=$ENV_APP_VERSION -X m
 RUN go test ./...
 
 # Start a new stage from scratch
-FROM alpine:3.24.2
+FROM alpine:3.24.3
 
 # Set the Current Working Directory inside the container
 WORKDIR /app/
