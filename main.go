@@ -13,6 +13,7 @@ import (
 	"sync/atomic"
 	"syscall"
 	"time"
+	"unicode/utf8"
 
 	"github.com/creativeprojects/go-homie"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
@@ -556,6 +557,8 @@ func main() {
 				continue
 			}
 
+			line = latin1ToUTF8(line)
+
 			fields := strings.Fields(strings.TrimSpace(line))
 
 			//log.Printf("Received fields: %s", strings.Join(fields, "|"))
@@ -594,6 +597,22 @@ func main() {
 	}
 	port.Close()
 	log.Println("Shutdown complete")
+}
+
+// latin1ToUTF8 converts a line from the controller to UTF-8. The controller
+// sends ISO-8859-1 (e.g. "Z\xfcndung"), but Homie requires UTF-8 payloads, and
+// consumers such as Home Assistant reject the raw bytes. Every ISO-8859-1 byte
+// maps to the Unicode code point of the same value. A line that already is
+// valid UTF-8 is returned unchanged, in case a firmware sends UTF-8.
+func latin1ToUTF8(s string) string {
+	if utf8.ValidString(s) {
+		return s
+	}
+	runes := make([]rune, len(s))
+	for i := 0; i < len(s); i++ {
+		runes[i] = rune(s[i])
+	}
+	return string(runes)
 }
 
 func handleZRecord(fields []string, line string) {

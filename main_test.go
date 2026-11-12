@@ -192,3 +192,18 @@ func TestLastSerialDataSeconds(t *testing.T) {
 		t.Errorf("got %v, want %v", got, want)
 	}
 }
+
+func TestLatin1ToUTF8(t *testing.T) {
+	tests := []struct{ in, want string }{
+		{"Kessel Z\xfcndung", "Kessel Zündung"},
+		{"RLM Restw\xe4rme", "RLM Restwärme"},
+		{"z 18:40:16 St\xf6rung Quit 0007", "z 18:40:16 Störung Quit 0007"},
+		{"pm 100 7.8 73", "pm 100 7.8 73"},
+		{"Kessel Zündung", "Kessel Zündung"},
+	}
+	for _, tt := range tests {
+		if got := latin1ToUTF8(tt.in); got != tt.want {
+			t.Errorf("latin1ToUTF8(%q) = %q, want %q", tt.in, got, tt.want)
+		}
+	}
+}
