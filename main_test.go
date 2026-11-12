@@ -184,3 +184,11 @@ func TestReadinessProbeHandler(t *testing.T) {
 		t.Errorf("got %d %q", rr.Code, rr.Body.String())
 	}
 }
+
+func TestLastSerialDataSeconds(t *testing.T) {
+	ts := time.Date(2026, 11, 12, 6, 0, 0, 500_000_000, time.UTC)
+	lastSerialData.Store(ts.UnixNano())
+	if got, want := lastSerialDataSeconds(), float64(ts.Unix())+0.5; got != want {
+		t.Errorf("got %v, want %v", got, want)
+	}
+}
