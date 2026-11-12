@@ -205,6 +205,14 @@ func readinessProblems(now time.Time, mqttConnected bool) []string {
 	return problems
 }
 
+// lastSerialDataSeconds returns lastSerialData as Unix seconds for the
+// hargassner_serial_last_data_timestamp_seconds gauge. Alerting on
+// time() minus this value detects missing data independently of the season;
+// the process values themselves can legitimately stay constant for hours.
+func lastSerialDataSeconds() float64 {
+	return float64(lastSerialData.Load()) / float64(time.Second)
+}
+
 func readinessProbe(w http.ResponseWriter, r *http.Request) {
 	problems := readinessProblems(time.Now(), mqttClient != nil && mqttClient.IsConnectionOpen())
 	if len(problems) > 0 {
@@ -487,6 +495,11 @@ func main() {
 	stoerungEndpoint := "/stoerung"
 	http.HandleFunc(stoerungEndpoint, handleStoerung)
 	log.Printf("Stoerung endpoint is %s", stoerungEndpoint)
+	prometheus.MustRegister(prometheus.NewGaugeFunc(prometheus.GaugeOpts{
+		Name: "hargassner_serial_last_data_timestamp_seconds",
+		Help: "Unix time of the last line read from the serial port (process start until the first line)",
+	}, lastSerialDataSeconds))
+
 	metricsEndpoint := "/metrics"
 	http.Handle(metricsEndpoint, promhttp.Handler())
 	log.Printf("Metrics endpoint is %s", metricsEndpoint)
