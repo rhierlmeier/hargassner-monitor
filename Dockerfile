@@ -18,7 +18,7 @@ ARG BUILD_ID=UNKNOWN
 ENV ENV_BUILD_ID=$BUILD_ID
 
 # Build the Go app
-RUN CGO_ENABLED=0 go build -ldflags="-s -w -X main.version=$ENV_APP_VERSION -X main.commit=$ENV_COMMIT_ID -X main.build=$ENV_BUILD_ID" -o build/hargassner-monitor main.go
+RUN CGO_ENABLED=0 go build -ldflags="-s -w -X main.version=$ENV_APP_VERSION -X main.commit=$ENV_COMMIT_ID -X main.build=$ENV_BUILD_ID" -o build/hargassner-monitor .
 # Run tests
 RUN go test ./...
 
