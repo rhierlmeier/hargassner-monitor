@@ -66,6 +66,10 @@ The application uses the following environment variables:
 - `HARGASSNER_MQTT_PASSWORD`: Specifies the password for MQTT broker authentication. Default is empty.
 - `HARGASSNER_MONITOR_PORT`: Port where the HTTP server first status request is listing
 - `HARGASSNER_MAX_DATA_AGE`: Maximum time without data from the serial port before `/readiness` reports not ready, as a Go duration (e.g. `5m`). Default is `5m`.
+- `HARGASSNER_HA_DISCOVERY`: Publishes Home Assistant MQTT discovery configs, see below. `all` for every property, or a comma-separated list of `<node>/<property>` (e.g. `prozesswerte/aussenTemperaturAktuell`). Default is empty: no discovery.
+- `HARGASSNER_HA_DISCOVERY_PREFIX`: Discovery prefix of Home Assistant. Default is `homeassistant`.
+- `HARGASSNER_HA_LANGUAGE`: Language of the entity names in Home Assistant, `en` or `de`. Default is `en`.
+- `TZ`: Time zone of the controller (e.g. `Europe/Berlin`). Controller records carry only the time of day; `stoerung/lastActive` is built from it in this time zone. Default is UTC.
 
 ## Readiness
 
@@ -167,4 +171,40 @@ The application publishes the status values of the Hargassner heating system. It
 | `nr`   | Nummer   | integer  |
 | `text` | Text     | string   |
 | `active`| Aktiv | boolean |
-| `lastChange` | Letzte Änderung | string |
+| `lastActive` | Letzte Aktivität | string |
+
+`lastActive` is an RFC 3339 timestamp, e.g. `2026-11-15T08:29:10+01:00`
+(before 1.3.0 only the time of day, `08:29:10`).
+
+## Home Assistant
+
+Home Assistant has no Homie integration. With `HARGASSNER_HA_DISCOVERY` set,
+the monitor publishes a retained [MQTT discovery](https://www.home-assistant.io/integrations/mqtt/#mqtt-discovery)
+config per property on `<prefix>/<component>/hargassner/<node>_<property>/config`
+whenever it connects to the broker. Home Assistant then creates the entities
+itself, grouped under one device `Hargassner Heizung`. The configs only point
+at the Homie topics, which stay unchanged.
+
+- Numbers become `sensor` entities with unit, `device_class` (from the unit)
+  and `state_class: measurement`; booleans become `binary_sensor` with
+  `payload_on: "true"`, `payload_off: "false"`; strings become `sensor`.
+- An entity is available while `homie/hargassner/$state` is `ready`.
+- Properties that are not selected get an empty retained config, which
+  removes an entity discovered earlier. A property removed from the code
+  leaves its config on the broker; clear it by hand with an empty retained
+  message.
+
+### Migrating from hand-written MQTT entities
+
+The 23 entities of the former hand-written Home Assistant config keep their
+`unique_id` (see `haOverrides` in `ha_discovery.go`), so Home Assistant keeps
+their entity IDs and history. New properties get `hargassner_<node>_<property>`.
+Home Assistant rejects a discovered entity while a YAML entity with the same
+`unique_id` exists, so migrate like this:
+
+1. Select one property with `HARGASSNER_HA_DISCOVERY`, remove its entity from
+   the YAML config and restart Home Assistant. Check entity ID, history and
+   dashboards.
+2. Set `HARGASSNER_HA_DISCOVERY=all` and remove the YAML entities in the same
+   step.
+
