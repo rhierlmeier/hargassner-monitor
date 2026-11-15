@@ -13,6 +13,8 @@ import (
 	"sync/atomic"
 	"syscall"
 	"time"
+	// The alpine image has no zoneinfo; embedded so that TZ works.
+	_ "time/tzdata"
 	"unicode/utf8"
 
 	"github.com/creativeprojects/go-homie"
@@ -23,7 +25,7 @@ import (
 )
 
 var mqttClient mqtt.Client
-var homieDevice = homie.NewDevice("hargassner", "Hargassner Heizung")
+var homieDevice = homie.NewDevice(homieDeviceID, "Hargassner Heizung")
 var nodeProcessWerte = homieDevice.AddNode("prozesswerte", "Prozesswerte", "Prozesswerte")
 var nodeHeizkreis1 = homieDevice.AddNode("heizkreis1", "Heizkreis 1", "Heizkreis 1")
 var nodeHeizkreis2 = homieDevice.AddNode("heizkreis2", "Heizkreis 2", "Heizkreis 2")
@@ -166,7 +168,7 @@ func newEmptyStatusRecord() *StatusRecord {
 		FlowTemperatureCircuit1Set: StatusField[float64]{Id: "vorlaufSollTemperatur", Name: MultiLanguageString{EN: "Flow Temperature Circuit 1 Set", DE: "Soll-Vorlauftemperatur Kreis 1"}, Unit: "°C"},
 		FlowTemperatureCircuit2Set: StatusField[float64]{Id: "vorlaufSollTemperatur", Name: MultiLanguageString{EN: "Flow Temperature Circuit 2 Set", DE: "Soll-Vorlauftemperatur Kreis 2"}, Unit: "°C"},
 		ReturnBoiler2BufferTemp:    StatusField[int]{Id: "ruecklaufBoiler2", Name: MultiLanguageString{EN: "Return Boiler to Buffer Temperature", DE: "Rücklauftemperatur Boiler2"}, Unit: "°C"},
-		BoilerTemperature1:         StatusField[int]{Id: "boiler1Temperatur", Name: MultiLanguageString{EN: "Boiler Temperature 1", DE: "Kesseltemperatur 1"}, Unit: "°C"},
+		BoilerTemperature1:         StatusField[int]{Id: "boiler1Temperatur", Name: MultiLanguageString{EN: "Boiler Temperature 1", DE: "Boilertemperatur 1"}, Unit: "°C"},
 		FeedRate:                   StatusField[int]{Id: "foerderMenge", Name: MultiLanguageString{EN: "Feed Rate", DE: "Fördermenge"}, Unit: "%"},
 		BoilerSetTemperature:       StatusField[int]{Id: "boiler1SollTemperatur", Name: MultiLanguageString{EN: "Boiler1 Set Temperature", DE: "Solltemperatur Boiler1"}, Unit: "°C"},
 		CurrentUnderpressure:       StatusField[float64]{Id: "unterdruckAktuell", Name: MultiLanguageString{EN: "Current Underpressure", DE: "Unterdruck aktuell"}, Unit: "Pa"},
@@ -291,6 +293,33 @@ func parseStatusRecord(fields []string, record *StatusRecord) error {
 	return nil
 }
 
+func registerStatusRecord(r *StatusRecord) {
+	registerStatusField(&r.PrimaryAirFan, nodeProcessWerte, "prozesswerte")
+	registerStatusField(&r.ExhaustFan, nodeProcessWerte, "prozesswerte")
+	registerStatusField(&r.O2InExhaustGas, nodeProcessWerte, "prozesswerte")
+	registerStatusField(&r.BoilerTemperature, nodeProcessWerte, "prozesswerte")
+	registerStatusField(&r.ExhaustGasTemperature, nodeProcessWerte, "prozesswerte")
+	registerStatusField(&r.CurrentOutdoorTemperature, nodeProcessWerte, "prozesswerte")
+	registerStatusField(&r.AverageOutdoorTemperature, nodeProcessWerte, "prozesswerte")
+	registerStatusField(&r.FlowTemperatureCircuit1, nodeHeizkreis1, "heizkreis1")
+	registerStatusField(&r.FlowTemperatureCircuit2, nodeHeizkreis2, "heizkreis2")
+	registerStatusField(&r.FlowTemperatureCircuit1Set, nodeHeizkreis1, "heizkreis1")
+	registerStatusField(&r.FlowTemperatureCircuit2Set, nodeHeizkreis2, "heizkreis2")
+	registerStatusField(&r.ReturnBoiler2BufferTemp, nodeProcessWerte, "prozesswerte")
+	registerStatusField(&r.BoilerTemperature1, nodeProcessWerte, "prozesswerte")
+	registerStatusField(&r.FeedRate, nodeProcessWerte, "prozesswerte")
+	registerStatusField(&r.BoilerSetTemperature, nodeProcessWerte, "prozesswerte")
+	registerStatusField(&r.CurrentUnderpressure, nodeProcessWerte, "prozesswerte")
+	registerStatusField(&r.AverageUnderpressure, nodeProcessWerte, "prozesswerte")
+	registerStatusField(&r.SetUnderpressure, nodeProcessWerte, "prozesswerte")
+	registerStatusField(&r.BoilerTemperature2SM, nodeProcessWerte, "prozesswerte")
+	registerStatusField(&r.HK1FR25, nodeHeizkreis1, "heizkreis1")
+	registerStatusField(&r.HK2FR25, nodeHeizkreis2, "heizkreis2")
+	registerStatusField(&r.MotorCurrentFeedScrew, nodeProcessWerte, "prozesswerte")
+	registerStatusField(&r.MotorCurrentAshDischarge, nodeProcessWerte, "prozesswerte")
+	registerStatusField(&r.MotorCurrentRoomDischarge, nodeProcessWerte, "prozesswerte")
+}
+
 func getEnv(name string, defaultValue string) string {
 	value := os.Getenv(name)
 	if value == "" {
@@ -346,6 +375,7 @@ func onConnected(client mqtt.Client) {
 	// retain flag, so only publishAllHomieAttributes stores it on the broker.
 	homieDevice.SetState(homie.StateReady)
 	publishAllHomieAttributes()
+	publishHADiscovery()
 }
 
 func publishAllHomieAttributes() {
@@ -403,6 +433,7 @@ func registerStatusField[T any](field *StatusField[T], node *homie.Node, nodeNam
 		log.Fatalf("unsupported type of field %s", field.Id)
 	}
 	field.HomieProperty = node.AddProperty(field.Id, field.Name.EN, propertyType).SetUnit(field.Unit)
+	registerHAEntity(haEntity{Node: nodeName, Property: field.Id, Name: field.Name, Unit: field.Unit, DataType: propertyType})
 
 	if propertyType != homie.TypeString {
 		name := "hargassner_" + nodeName + "_" + strings.ReplaceAll(field.Id, "-", "_")
@@ -458,30 +489,18 @@ func main() {
 
 	statusRecord := newEmptyStatusRecord()
 
-	registerStatusField(&statusRecord.PrimaryAirFan, nodeProcessWerte, "prozesswerte")
-	registerStatusField(&statusRecord.ExhaustFan, nodeProcessWerte, "prozesswerte")
-	registerStatusField(&statusRecord.O2InExhaustGas, nodeProcessWerte, "prozesswerte")
-	registerStatusField(&statusRecord.BoilerTemperature, nodeProcessWerte, "prozesswerte")
-	registerStatusField(&statusRecord.ExhaustGasTemperature, nodeProcessWerte, "prozesswerte")
-	registerStatusField(&statusRecord.CurrentOutdoorTemperature, nodeProcessWerte, "prozesswerte")
-	registerStatusField(&statusRecord.AverageOutdoorTemperature, nodeProcessWerte, "prozesswerte")
-	registerStatusField(&statusRecord.FlowTemperatureCircuit1, nodeHeizkreis1, "heizkreis1")
-	registerStatusField(&statusRecord.FlowTemperatureCircuit2, nodeHeizkreis2, "heizkreis2")
-	registerStatusField(&statusRecord.FlowTemperatureCircuit1Set, nodeHeizkreis1, "heizkreis1")
-	registerStatusField(&statusRecord.FlowTemperatureCircuit2Set, nodeHeizkreis2, "heizkreis2")
-	registerStatusField(&statusRecord.ReturnBoiler2BufferTemp, nodeProcessWerte, "prozesswerte")
-	registerStatusField(&statusRecord.BoilerTemperature1, nodeProcessWerte, "prozesswerte")
-	registerStatusField(&statusRecord.FeedRate, nodeProcessWerte, "prozesswerte")
-	registerStatusField(&statusRecord.BoilerSetTemperature, nodeProcessWerte, "prozesswerte")
-	registerStatusField(&statusRecord.CurrentUnderpressure, nodeProcessWerte, "prozesswerte")
-	registerStatusField(&statusRecord.AverageUnderpressure, nodeProcessWerte, "prozesswerte")
-	registerStatusField(&statusRecord.SetUnderpressure, nodeProcessWerte, "prozesswerte")
-	registerStatusField(&statusRecord.BoilerTemperature2SM, nodeProcessWerte, "prozesswerte")
-	registerStatusField(&statusRecord.HK1FR25, nodeHeizkreis1, "heizkreis1")
-	registerStatusField(&statusRecord.HK2FR25, nodeHeizkreis2, "heizkreis2")
-	registerStatusField(&statusRecord.MotorCurrentFeedScrew, nodeProcessWerte, "prozesswerte")
-	registerStatusField(&statusRecord.MotorCurrentAshDischarge, nodeProcessWerte, "prozesswerte")
-	registerStatusField(&statusRecord.MotorCurrentRoomDischarge, nodeProcessWerte, "prozesswerte")
+	registerStatusRecord(statusRecord)
+
+	discovery, err := parseHADiscovery(getEnv("HARGASSNER_HA_DISCOVERY", ""))
+	if err != nil {
+		log.Fatalf("invalid HARGASSNER_HA_DISCOVERY: %v", err)
+	}
+	haDiscoverySelected = discovery
+	haDiscoveryPrefix = getEnv("HARGASSNER_HA_DISCOVERY_PREFIX", haDiscoveryPrefix)
+	haLanguage = getEnv("HARGASSNER_HA_LANGUAGE", haLanguage)
+	if haLanguage != "en" && haLanguage != "de" {
+		log.Fatalf("invalid HARGASSNER_HA_LANGUAGE %q: must be en or de", haLanguage)
+	}
 
 	homieDevice.OnSet(onSet)
 
@@ -615,6 +634,27 @@ func latin1ToUTF8(s string) string {
 	return string(runes)
 }
 
+// now is replaceable in tests.
+var now = time.Now
+
+// controllerTimestamp turns the time of day of a controller record
+// ("15:04:05", local time of the controller) into an RFC 3339 timestamp. The
+// record carries no date: it is taken from now, and a time more than an hour
+// ahead of now belongs to the previous day (record from before midnight).
+// Set TZ to the time zone of the controller.
+func controllerTimestamp(clock string, now time.Time) string {
+	t, err := time.ParseInLocation("15:04:05", clock, now.Location())
+	if err != nil {
+		log.Printf("invalid time %q in record: %v", clock, err)
+		return now.Format(time.RFC3339)
+	}
+	t = time.Date(now.Year(), now.Month(), now.Day(), t.Hour(), t.Minute(), t.Second(), 0, now.Location())
+	if t.After(now.Add(time.Hour)) {
+		t = t.AddDate(0, 0, -1)
+	}
+	return t.Format(time.RFC3339)
+}
+
 func handleZRecord(fields []string, line string) {
 
 	log.Printf("Handling Z record: fields:[%s]", strings.Join(fields, "|"))
@@ -686,7 +726,7 @@ func handleZRecord(fields []string, line string) {
 			log.Printf("Quit Störung %d: %s", stoerNr, stoerungText)
 		}
 
-		lastChange := fields[1]
+		lastChange := controllerTimestamp(fields[1], now())
 
 		stoerungRecord.StoerungNr.SetValue(stoerNr)
 		stoerungRecord.StoerungText.SetValue(stoerungText)
@@ -757,7 +797,7 @@ func setStoerungHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	stoerungRecord.StoerungText.SetValue(req.StoerMeldung)
 	stoerungRecord.StoerungActive.SetValue(true)
-	stoerungRecord.LastActive.SetValue(time.Now().Format("15:04:05"))
+	stoerungRecord.LastActive.SetValue(now().Format(time.RFC3339))
 
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, "Störung updated successfully")
@@ -768,7 +808,7 @@ func resetStoerungHandler(w http.ResponseWriter) {
 	stoerungRecord.StoerungActive.SetValue(false)
 	stoerungRecord.StoerungNr.SetValue(0)
 	stoerungRecord.StoerungText.SetValue("")
-	stoerungRecord.LastActive.SetValue(time.Now().Format("15:04:05"))
+	stoerungRecord.LastActive.SetValue(now().Format(time.RFC3339))
 
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, "Störung reset successfully")

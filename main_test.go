@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -8,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/creativeprojects/go-homie"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -79,9 +81,12 @@ func TestHandleZRecord_SetAndQuit(t *testing.T) {
 	if stoerungRecord.StoerungActive.Value {
 		t.Fatalf("after Quit expected StoerungActive false, got true")
 	}
-	// LastActive should be set to the time field from input (fields[1])
-	if stoerungRecord.LastActive.Value != "18:40:16" {
-		t.Fatalf("after Quit expected LastActive %q, got %q", "18:40:16", stoerungRecord.LastActive.Value)
+	// LastActive carries the time field from input (fields[1]) as timestamp
+	if !strings.Contains(stoerungRecord.LastActive.Value, "T18:40:16") {
+		t.Fatalf("after Quit expected LastActive at 18:40:16, got %q", stoerungRecord.LastActive.Value)
+	}
+	if _, err := time.Parse(time.RFC3339, stoerungRecord.LastActive.Value); err != nil {
+		t.Fatalf("LastActive is no RFC 3339 timestamp: %v", err)
 	}
 }
 
@@ -205,5 +210,168 @@ func TestLatin1ToUTF8(t *testing.T) {
 		if got := latin1ToUTF8(tt.in); got != tt.want {
 			t.Errorf("latin1ToUTF8(%q) = %q, want %q", tt.in, got, tt.want)
 		}
+	}
+}
+
+func TestControllerTimestamp(t *testing.T) {
+	loc, err := time.LoadLocation("Europe/Berlin")
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Date(2026, 11, 15, 8, 30, 0, 0, loc)
+	cases := []struct {
+		clock string
+		want  string
+	}{
+		{"08:29:10", "2026-11-15T08:29:10+01:00"},
+		// slightly ahead (controller clock runs fast): still today
+		{"09:00:00", "2026-11-15T09:00:00+01:00"},
+		// more than an hour ahead: record from before midnight
+		{"23:59:30", "2026-11-14T23:59:30+01:00"},
+	}
+	for _, c := range cases {
+		if got := controllerTimestamp(c.clock, now); got != c.want {
+			t.Errorf("controllerTimestamp(%q) = %q, want %q", c.clock, got, c.want)
+		}
+	}
+	// invalid time: falls back to now
+	if got := controllerTimestamp("xx", now); got != "2026-11-15T08:30:00+01:00" {
+		t.Errorf("controllerTimestamp(invalid) = %q", got)
+	}
+}
+
+// registerAllForTest registers every property like main does.
+func registerAllForTest() {
+	registerStatusRecord(newEmptyStatusRecord())
+}
+
+func TestHADiscoveryEntities(t *testing.T) {
+	registerAllForTest()
+
+	// 24 process values, 3 Kessel, 4 Störung, 1 Meldung
+	if len(haEntities) != 32 {
+		t.Fatalf("expected 32 properties, got %d", len(haEntities))
+	}
+	for key := range haOverrides {
+		if _, ok := haEntities[key]; !ok {
+			t.Errorf("override for unknown property %s", key)
+		}
+	}
+
+	uniqueIDs := map[string]string{}
+	topics := map[string]string{}
+	legacy := 0
+	for key, e := range haEntities {
+		c := e.config("en")
+		if other, dup := uniqueIDs[c.UniqueID]; dup {
+			t.Errorf("unique_id %s used by %s and %s", c.UniqueID, key, other)
+		}
+		uniqueIDs[c.UniqueID] = key
+		topic := e.configTopic("homeassistant")
+		if other, dup := topics[topic]; dup {
+			t.Errorf("config topic %s used by %s and %s", topic, key, other)
+		}
+		topics[topic] = key
+
+		if c.StateTopic != "homie/hargassner/"+key {
+			t.Errorf("%s: state_topic %s", key, c.StateTopic)
+		}
+		if haOverrides[key].LegacyUniqueID != "" {
+			legacy++
+			if c.DefaultEntityID != "" {
+				t.Errorf("%s: legacy entity must not set default_entity_id", key)
+			}
+		} else if c.DefaultEntityID != e.component()+"."+c.UniqueID {
+			t.Errorf("%s: default_entity_id %q", key, c.DefaultEntityID)
+		}
+		wantComponent := "sensor"
+		if e.DataType == homie.TypeBoolean {
+			wantComponent = "binary_sensor"
+		}
+		if !strings.HasPrefix(topic, "homeassistant/"+wantComponent+"/hargassner/") {
+			t.Errorf("%s: config topic %s", key, topic)
+		}
+	}
+	// the entities of the former hand-written Home Assistant config
+	if legacy != 23 {
+		t.Errorf("expected 23 legacy unique_ids, got %d", legacy)
+	}
+}
+
+func TestHADiscoveryConfig(t *testing.T) {
+	registerAllForTest()
+
+	c := haEntities["prozesswerte/aussenTemperaturAktuell"].config("de")
+	if c.Name != "Außentemperatur aktuell" || c.UniqueID != "hargassner_aussentemperatur_aktuell" ||
+		c.UnitOfMeasurement != "°C" || c.DeviceClass != "temperature" || c.StateClass != "measurement" {
+		t.Errorf("aussenTemperaturAktuell: %+v", c)
+	}
+	if c.Availability[0].Topic != "homie/hargassner/$state" {
+		t.Errorf("availability topic %s", c.Availability[0].Topic)
+	}
+
+	c = haEntities["stoerung/active"].config("en")
+	if c.PayloadOn != "true" || c.PayloadOff != "false" || c.DeviceClass != "problem" || c.UnitOfMeasurement != "" {
+		t.Errorf("stoerung/active: %+v", c)
+	}
+
+	// a code without unit gets no statistics
+	if c = haEntities["stoerung/nr"].config("en"); c.StateClass != "" {
+		t.Errorf("stoerung/nr: state_class %q", c.StateClass)
+	}
+	if c = haEntities["kessel/AnzahlZuendungen"].config("en"); c.StateClass != "total_increasing" {
+		t.Errorf("AnzahlZuendungen: state_class %q", c.StateClass)
+	}
+
+	c = haEntities["stoerung/text"].config("en")
+	if c.UniqueID != "hargassner_stoerung_text" || c.DefaultEntityID != "sensor.hargassner_stoerung_text" {
+		t.Errorf("stoerung/text: %+v", c)
+	}
+	data, err := json.Marshal(c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(data), "unit_of_measurement") || strings.Contains(string(data), "payload_on") {
+		t.Errorf("empty fields not omitted: %s", data)
+	}
+}
+
+func TestParseHADiscovery(t *testing.T) {
+	registerAllForTest()
+
+	if selected, err := parseHADiscovery(""); selected != nil || err != nil {
+		t.Errorf("empty: %v %v", selected, err)
+	}
+	if selected, err := parseHADiscovery("all"); err != nil || len(selected) != len(haEntities) {
+		t.Errorf("all: %d %v", len(selected), err)
+	}
+	selected, err := parseHADiscovery("prozesswerte/aussenTemperaturAktuell, stoerung/active")
+	if err != nil || len(selected) != 2 || !selected["stoerung/active"] {
+		t.Errorf("list: %v %v", selected, err)
+	}
+	if _, err := parseHADiscovery("prozesswerte/gibtsNicht"); err == nil {
+		t.Error("unknown property accepted")
+	}
+}
+
+func TestHADiscoveryMessages(t *testing.T) {
+	registerAllForTest()
+
+	selected, _ := parseHADiscovery("prozesswerte/aussenTemperaturAktuell")
+	messages, err := haDiscoveryMessages(selected, "homeassistant", "de")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(messages) != len(haEntities) {
+		t.Fatalf("expected one message per property, got %d", len(messages))
+	}
+	payload := messages["homeassistant/sensor/hargassner/prozesswerte_aussenTemperaturAktuell/config"]
+	var c haConfig
+	if err := json.Unmarshal([]byte(payload), &c); err != nil || c.UniqueID != "hargassner_aussentemperatur_aktuell" {
+		t.Errorf("selected property: %q %v", payload, err)
+	}
+	// not selected: empty payload removes an earlier discovered entity
+	if payload, ok := messages["homeassistant/sensor/hargassner/prozesswerte_kesselTemperatur/config"]; !ok || payload != "" {
+		t.Errorf("unselected property: %q %v", payload, ok)
 	}
 }
