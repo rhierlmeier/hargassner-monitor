@@ -6,7 +6,7 @@ require go.bug.st/serial v1.8.0
 
 require (
 	github.com/creativeprojects/go-homie v0.2.0
-	github.com/eclipse/paho.mqtt.golang v1.5.1
+	github.com/eclipse/paho.mqtt.golang v1.5.2
 	github.com/prometheus/client_golang v1.25.0
 )
 
