@@ -358,8 +358,12 @@ func onSet(topic, value string, dataType homie.PropertyType) {
 	}
 }
 
+// publish sends a property value retained, as the Homie convention requires.
+// Values are only published when they change, so without retain a subscriber
+// that (re)connects later, e.g. Home Assistant after a restart, never sees a
+// value that stays constant (motor currents, error number).
 func publish(topic, value string) {
-	mqttClient.Publish(topic, 0, false, value)
+	mqttClient.Publish(topic, 0, true, value)
 }
 
 func onConnectionLost(client mqtt.Client, err error) {
@@ -475,6 +479,8 @@ func main() {
 	}
 	lastSerialData.Store(time.Now().UnixNano())
 
+	logRaw := getEnv("HARGASSNER_LOG_RAW", "") == "true"
+
 	mode := &serial.Mode{
 		BaudRate: 19200,
 		Parity:   serial.NoParity,
@@ -577,6 +583,10 @@ func main() {
 			}
 
 			line = latin1ToUTF8(line)
+
+			if logRaw {
+				log.Printf("raw: %q", line)
+			}
 
 			fields := strings.Fields(strings.TrimSpace(line))
 

@@ -66,6 +66,7 @@ The application uses the following environment variables:
 - `HARGASSNER_MQTT_PASSWORD`: Specifies the password for MQTT broker authentication. Default is empty.
 - `HARGASSNER_MONITOR_PORT`: Port where the HTTP server first status request is listing
 - `HARGASSNER_MAX_DATA_AGE`: Maximum time without data from the serial port before `/readiness` reports not ready, as a Go duration (e.g. `5m`). Default is `5m`.
+- `HARGASSNER_LOG_RAW`: `true` logs every line read from the serial port, e.g. to identify fields of the `pm` record that are not parsed yet. Default is empty: no logging.
 - `HARGASSNER_HA_DISCOVERY`: Publishes Home Assistant MQTT discovery configs, see below. `all` for every property, or a comma-separated list of `<node>/<property>` (e.g. `prozesswerte/aussenTemperaturAktuell`). Default is empty: no discovery.
 - `HARGASSNER_HA_DISCOVERY_PREFIX`: Discovery prefix of Home Assistant. Default is `homeassistant`.
 - `HARGASSNER_HA_LANGUAGE`: Language of the entity names in Home Assistant, `en` or `de`. Default is `en`.
